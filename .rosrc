@@ -1,0 +1,183 @@
+#!/usr/bin/env bash
+
+chol() {
+  color=''
+  nc='\033[0m'
+
+  if [[ "$2" == "--yellow" ]]; then
+    color='\033[0;33m'
+  elif [[ "$2" == "--green" ]]; then
+    color='\033[0;32m'
+  else
+    color='\033[0;31m'
+  fi
+    
+  echo -e "${color}${1}${nc}"
+}
+
+external_ip() {
+  return "${dig +short myip.opendns.com @resolver1.opendns.com}"
+}
+
+show_usage() {
+usage="$(basename "$0") [-h] [-s n] -- program to calculate the answer to life, the universe and everything
+
+function: connect
+    -h, --help  show help text
+    -v, --verbose manually set ROS_IP and ROS_MASTER_URI"
+
+  echo "$usage"
+}
+
+valid_ip() { 
+  local ip=$1
+  local stat=1
+  
+  if [[ $ip =~ ^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]]; then
+    OIFS=$IFS
+    IFS='.'
+    ip=($ip)
+    IFS=$OIFS
+    [[ ${ip[0]} -le 255 && ${ip[1]} -le 255 \
+        && ${ip[2]} -le 255 && ${ip[3]} -le 255 ]]
+    stat=$?
+  fi
+  return $stat
+}
+
+valid_hostname() {
+  local hostname=$1
+  local stat=1
+  if [[ $hostname =~ ^([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])(\.([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\-]{0,61}[a-zA-Z0-9]))*$ ]]; then
+    stat=0
+  fi
+  echo "$stat"
+  return $stat
+}
+
+connection_status() {
+  echo '---'
+  hostname="${ROS_MASTER_URI#*/}"
+  ping -q -c3 "${hostname}" &> /dev/null
+  if [ $? -eq 0 ]; then
+    status='Connected'
+    chol "ROS Connection Status: $status" --green
+  else 
+    status='Failed'
+    chol "ROS Connection Status: $status" --red
+  fi
+  echo "ROS IP: $ROS_IP"
+  echo "ROS Hostname: $ROS_HOSTNAME"
+  echo "ROS Master URI: $ROS_MASTER_URI"
+}
+
+connect_verbose() {
+  ip=''
+  master=''
+
+  while true; do
+    read -p 'Your IP: ' ipp
+    if (! valid_ip "$ipp"); then
+      echo "Invalid IP address!"
+      continue
+    fi
+    ip="$ipp"
+    break
+  done
+
+  while true; do
+    read -p 'Your ROS Master URI: ' uri
+    chol "${uri##: }" --green
+    if [[ -z "$uri"  || -z "${uri##: }" ]]; then
+      chol 'Invalid ROS Master URI. Forgot the port maybe?' --yellow
+      continue
+    fi
+    master="$uri"
+    break
+  done
+
+  export ROS_IP="$ip"
+  export ROS_HOSTNAME="$ip"
+  export ROS_MASTER_URI="$master"
+
+  connection_status
+}
+
+connect() {
+  if [[ ! $# -eq 1 ]]; then echo 'Invalid Number of Arguments!'; return 1; fi
+
+  if [[ "$1" == '-h' || "$1" == '--help' ]]; then
+    show_usage
+    return 0
+  fi
+
+  if [[ "$1" == '-v' || "$1" == "--verbose" ]]; then
+    connect_verbose
+    return 0
+  fi
+
+  ip="$(dig +short myip.opendns.com @resolver1.opendns.com)" &> /dev/null
+  if [[ -z "$ip" ]]; then
+    chol 'Cannot get IP automatically' --yellow
+    while true; do
+      read -p 'Your IP: ' ipp
+      if (! valid_ip "$ipp"); then
+        echo "Invalid IP address!"
+        continue
+      fi
+      ip="$ipp"
+      break
+    done
+  fi
+  
+  user=''
+  user_found=1
+
+  port='11311'
+
+  host=''
+  host_found=1
+
+  hostname=''
+  hostname_found=1
+
+  file='./.config'
+
+  while read line
+  do
+    front="${line%% *}"
+    back="${line##* }"
+
+    if [[ "$front" == 'Host' ]]; then
+      host="$back"
+      host_found=0
+      continue
+    fi
+
+    if [[ $host_found -eq 0 ]]; then
+      if [[ "$front" == 'User' ]]; then
+        user="$back"
+        user_found=0
+        continue
+      fi
+      if [[ "$front" == 'HostName' ]]; then
+        hostname="$back"
+        hostname_found=0
+        continue
+      fi
+    fi
+
+    if [[ $host_found -eq 1 && $hostname_found -eq 1 && $user_found -eq 1 ]]; then break; fi
+
+  done < $file
+
+  if [[ $host_found -eq 1 ]]; then chol 'Cannot find host!'; return 1; fi
+  if [[ $hostname_found -eq 1 ]]; then chol 'Cannot find user!'; return 1; fi
+  if [[ $user_found -eq 1 ]]; then chol 'Cannot find hostname!'; return 1; fi
+
+  export ROS_IP="$ip"
+  export ROS_HOSTNAME="$ip"
+  export ROS_MASTER_URI="https://${user}@${hostname}:${port}"
+
+  connection_status
+}
