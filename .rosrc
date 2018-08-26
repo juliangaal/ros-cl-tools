@@ -33,26 +33,107 @@ valid_ip() {
   local ip=$1
   local stat=1
   
-  if [[ $ip =~ ^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]]; then
+  if [[ ! $ip =~ ^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]]; then
+    chol 'invalid!' --red
+    return $stat
+  else
     OIFS=$IFS
     IFS='.'
     ip=($ip)
     IFS=$OIFS
-    [[ ${ip[0]} -le 255 && ${ip[1]} -le 255 \
-        && ${ip[2]} -le 255 && ${ip[3]} -le 255 ]]
-    stat=$?
+    if [[ ! ${ip[0]} -le 255 && ${ip[1]} -le 255 \
+        && ${ip[2]} -le 255 && ${ip[3]} -le 255 ]]; then 
+      chol 'invalid!' --red
+      return $stat; 
+    fi
   fi
+
+  stat=0
   return $stat
 }
 
-valid_hostname() {
+valid_port() {
+  local port=$1
+  local stat=1
+
+  if [[ ! $port =~ ^[0-9]{0,5}$  && ! ${port##*:} -le 65535 ]]; then
+    chol 'invalid!' --red
+    return $stat
+  fi
+
+  stat=0
+  return $stat
+}
+
+valid_host() {
+  local host=$1
+  local stat=1
+
+  if [[ ! $host =~ ^\:[0-9]{0,5}$ ]]; then 
+    chol 'invalid!' --red
+    return $stat
+  fi
+
+  stat=0
+  return $stat
+}
+
+valid_http() {
+  local http=$1
+  local stat=1
+
+  if [[ ! $http =~ ^[h-t]{4,5}\:$ ]]; then
+    chol 'invalid!' --red
+    return $stat
+  fi
+
+  stat=0
+  return $stat
+}
+
+valid_user() {
+  local username=$1
+  local stat=1
+
+  if [[ ! $username =~ ^[a-zA-Z]{1,30}$ ]]; then
+    chol 'invalid!' --red
+    return $stat
+  fi
+
+  stat=0
+  return $stat
+}
+
+valid_master() {
+
+  if [[ ! $# -eq 1 ]]; then echo "Invalid number of arguments (valid_master)."; return 1; fi
+
   local hostname=$1
   local stat=1
-  if [[ $hostname =~ ^([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])(\.([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\-]{0,61}[a-zA-Z0-9]))*$ ]]; then
-    stat=0
-  fi
-  echo "$stat"
+
+  local untilAt="${hostname%%@*}"
+  local username="${untilAt##*/}"
+  local http="${untilAt%%//*}"
+  local afterAt="${hostname##*@}"
+  local addr="${afterAt%%:*}"
+  local master_port="${afterAt##*:}"
+
+  if ( ! valid_user "$username" ); then return $stat; fi
+
+  if ( ! valid_http "$http" ); then return $stat; fi
+  
+  if ( ! valid_ip "$addr"); then return $stat; fi
+
+  if ( ! valid_port "$master_port" ); then return $stat; fi
+
+  stat=0
   return $stat
+}
+
+status() {
+  echo "ROS IP: $ROS_IP"
+  echo "ROS Hostname: $ROS_HOSTNAME"
+  echo "ROS Master URI: $ROS_MASTER_URI"
 }
 
 connection_status() {
@@ -66,9 +147,8 @@ connection_status() {
     status='Failed'
     chol "ROS Connection Status: $status" --red
   fi
-  echo "ROS IP: $ROS_IP"
-  echo "ROS Hostname: $ROS_HOSTNAME"
-  echo "ROS Master URI: $ROS_MASTER_URI"
+
+  status
 }
 
 connect_verbose() {
@@ -87,8 +167,7 @@ connect_verbose() {
 
   while true; do
     read -p 'Your ROS Master URI: ' uri
-    chol "${uri##: }" --green
-    if [[ -z "$uri"  || -z "${uri##: }" ]]; then
+    if ( ! valid_master "$uri" ); then
       chol 'Invalid ROS Master URI. Forgot the port maybe?' --yellow
       continue
     fi
