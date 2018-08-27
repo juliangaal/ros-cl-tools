@@ -45,34 +45,50 @@ test_valid_master() {
 }
 
 test_create_rosinstall() {
-  echo ''
-  echo "Test $((++tests)): ${FUNCNAME[0]}"
-
   local start_dir="$PWD"
-  local ws="test_ws"
-  local install_file='.rosinstall'
-  mkdir -p "$ws"/src &> /dev/null
-  cp test.rosinstall "$ws"/src/.rosinstall
-  cd test_ws/src
+  local ws="${start_dir}/test_ws"
+  local test_files_dir="$start_dir/rosinstalls"
+  local ws_src="${ws}/src"
+  local test_files=("${test_files_dir}/test.rosinstall" \
+                    "${test_files_dir}/testrec.rosinstall")
+  local install_file="${ws_src}/.rosinstall"
+  local shell='bash'
+  local ros_version='kinetic'
 
-  echo "$offset Setting up mock workspace"
-  wstool update -t . &> /dev/null
+  for test_file in "${test_files[@]}";
+  do 
+    if [[ ! -f "$test_file" ]]; then
+      chol "Workspace test file $test_file doesn't exist" --red
+      return 1
+    fi
 
-  echo "$offset Compiling mock workspace"
-  cd .. && catkin_make -j10 &> /dev/null
+    echo ''
+    echo "Test $((++tests)): ${FUNCNAME[0]}"
 
-  echo "$offset Creating rosinstall"
-  cd src && create_rosinstall &> /dev/null
+    mkdir -p "$ws_src" &> /dev/null
+    cp "$test_file" "$install_file"
+    cd "$ws"
 
-  cd "$start_dir"/"$ws"/src
-  if $(diff .rosinstall .rosinstall_generated &> /dev/null); then
-    chol "$offset TEST SUCCESS: generation successful" --green
-  else
-    add_fail; chol "$offset TEST FAIL: generation unsuccessful" --red
-  fi
+    echo "$offset Setting up mock workspace from $test_file"
+    wstool update -t "$ws_src" &> /dev/null
 
-  rm -rf "${start_dir}/${ws}"
-  echo "$offset Deleting mock workspace at ${start_dir}/${ws}"
+    echo "$offset Compiling mock workspace"
+    source /opt/ros/"$ros_version"/setup."$shell"
+    rosdep install --from-paths "$ws_src" --ignore-src --rosdistro="$ros_version" -y &> /dev/null
+    catkin_make -j10 &> /dev/null
+
+    echo "$offset Creating rosinstall"
+    cd "$ws_src" && create_rosinstall &> /dev/null
+
+    if $(diff .rosinstall .rosinstall_generated &> /dev/null); then
+      chol "$offset TEST SUCCESS: generation successful" --green
+    else
+      add_fail; chol "$offset TEST FAIL: generation unsuccessful" --red
+    fi
+      
+    rm -rf "${ws}"
+
+  done  
 }
 
 init
