@@ -84,15 +84,14 @@ create_rosinstall() {
   echo "Scanning $PWD"
   echo ''
 
-  for directory in $(find -type d -printf '%d\t%P\n' | sort -r -nk1 | cut -f2-);
+  for directory in $(find -type d -printf '%d\t%P\n' | sort -r -nk1 | cut -f2);
   do
     if [[ -d "$directory" ]] && [[ "${directory##*.}" == "${git_dir}" ]]; then
       ros_package="${directory%/*}"
       chol "$offset Found ROS package: $ros_package" --green
 
-      cd "$ros_package"
-      current_branch="$(git branch | grep \* | cut -d ' ' -f2)"
-      current_remote="$(git config --get remote.origin.url)"
+      current_branch="$(cd "$ros_package" && git branch | grep \* | cut -d ' ' -f2)"
+      current_remote="$(cd "$ros_package" && git config --get remote.origin.url)"
 
       echo "- git:" >> "$output_file"
       echo "    local-name: $ros_package" >> "$output_file"
@@ -100,7 +99,6 @@ create_rosinstall() {
       echo "    version: $current_branch" >> "$output_file"
 
       ((++num_packages))
-      cd ..
     fi
   done
 
