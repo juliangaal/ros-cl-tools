@@ -1,7 +1,7 @@
 - git:
-    local-name: uos_tools
-    uri: https://www.github.com/uos/uos_tools.git
-    version: kinetic
+    local-name: teleop_twist_joy
+    uri: https://github.com/juliangaal/teleop_twist_joy.git
+    version: indigo-devel
 - git:
     local-name: sick_tim
     uri: https://www.github.com/uos/sick_tim.git
@@ -9,8 +9,4 @@
 - git:
     local-name: phidgets_drivers
     uri: https://www.github.com/ros-drivers/phidgets_drivers.git
-    version: kinetic
-- git:
-    local-name: ceres_robot
-    uri: https://www.github.com/uos/ceres_robot.git
     version: kinetic
