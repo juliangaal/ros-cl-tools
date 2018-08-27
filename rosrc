@@ -18,7 +18,7 @@ show_connect_usage() {
 
 show_create_rosinstall_usage() {
   usage="Function 'create_rosinstall_usage':
-  
+
   Create .rosinstall file for wstool from existing catkin workspace
 
   arguments:
@@ -75,10 +75,10 @@ create_rosinstall() {
   fi
 
   if [[ $# -eq 0 ]]; then
-    output_file="$rosinstall_file"
+    output_file="${PWD}/${rosinstall_file}"
   else
     custom_name="$1"
-    output_file="${custom_name}${rosinstall_file}"
+    output_file="${PWD}/${custom_name}${rosinstall_file}"
   fi
 
   echo "Scanning $PWD"
@@ -90,20 +90,22 @@ create_rosinstall() {
       ros_package="${directory%/*}"
       chol "$offset Found ROS package: $ros_package" --green
 
+      cd "$ros_package"
       current_branch="$(git branch | grep \* | cut -d ' ' -f2)"
       current_remote="$(git config --get remote.origin.url)"
 
-      echo "-git: " >> "$output_file"
-      echo "   local-name: $ros_package" >> "$output_file"
-      echo "   uri: $current_remote" >> "$output_file"
-      echo "   version: $current_branch" >> "$output_file"
+      echo "- git:" >> "$output_file"
+      echo "    local-name: $ros_package" >> "$output_file"
+      echo "    uri: $current_remote" >> "$output_file"
+      echo "    version: $current_branch" >> "$output_file"
 
       ((++num_packages))
+      cd ..
     fi
   done
 
   echo ''
-  echo "Done. Created $output_file with $num_packages ROS Packages"
+  echo "Done. Created ${PWD}/${output_file} with $num_packages ROS Packages"
 }
 
 valid_host() {

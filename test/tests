@@ -1,0 +1,83 @@
+#!/usr/bin/env bash
+
+num_failed=0
+tests=0
+offset='  '
+
+init() {
+  source ../rosrc
+  echo 'Running Tests'
+}
+
+add_fail() {
+  ((num_failed++))
+}
+
+summary() {
+  echo ''
+  if [[ ! $num_failed -eq 0 ]]; then
+    chol "${num_failed}/${tests} Tests failed" --red
+	else
+    chol "${num_failed}/${tests} Tests failed" --green
+  fi
+
+	echo 'Done'
+}
+
+test_valid_master() {
+  echo ''
+  echo "Test $((++tests)): ${FUNCNAME[0]}"
+
+  masters=('https://dfki@192.168.0.1:11311' 'https://dfki@uos.de' \
+           'https://dfki@uos.de:11311' 'https://flamara@informatik.uos.de:11311' \
+           'http' 'gdgdkjl567')
+  results=(0 1 0 0 1 1)
+
+  if [[ ! ${#masters[@]} -eq ${#results[@]} ]]; then add_fail; chol 'invalid testing parameters' --red; return 1; fi
+
+  for i in "${!masters[@]}"
+  do
+    valid_master "${masters[i]}" &> /dev/null
+
+    if [[ $? -eq ${results[i]} ]]; then chol "$offset TEST SUCCESS: ${masters[i]}" --green
+  else add_fail; chol "$offset TEST FAIL   :${masters[i]}" --red; fi
+  done
+}
+
+test_create_rosinstall() {
+  echo ''
+  echo "Test $((++tests)): ${FUNCNAME[0]}"
+
+  local start_dir="$PWD"
+  local ws="test_ws"
+  local install_file='.rosinstall'
+  mkdir -p "$ws"/src &> /dev/null
+  cp test.rosinstall "$ws"/src/.rosinstall
+  cd test_ws/src
+
+  echo "$offset Setting up mock workspace"
+  wstool update -t . &> /dev/null
+
+  echo "$offset Compiling mock workspace"
+  cd .. && catkin_make -j10 &> /dev/null
+
+  echo "$offset Creating rosinstall"
+  cd src && create_rosinstall &> /dev/null
+
+  cd "$start_dir"/"$ws"/src
+  if $(diff .rosinstall .rosinstall_generated &> /dev/null); then
+    chol "$offset TEST SUCCESS: generation successful" --green
+  else
+    add_fail; chol "$offset TEST FAIL: generation unsuccessful" --red
+  fi
+
+  rm -rf "${start_dir}/${ws}"
+  echo "$offset Deleting mock workspace at ${start_dir}/${ws}"
+}
+
+init
+
+test_valid_master
+test_create_rosinstall
+
+summary
