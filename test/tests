@@ -3,10 +3,13 @@
 num_failed=0
 tests=0
 offset='  '
+start=''
+
 
 init() {
   source ../rosrc
   echo 'Running Tests'
+  start=`date +%s`
 }
 
 add_fail() {
@@ -21,7 +24,7 @@ summary() {
     chol "${num_failed}/${tests} Tests failed" --green
   fi
 
-	echo 'Done'
+  echo "Duration: $((($(date +%s)-$start)/60)) minutes. Done"
 }
 
 test_valid_master() {
@@ -45,55 +48,80 @@ test_valid_master() {
 }
 
 test_create_rosinstall() {
-  local start_dir="$PWD"
-  local ws="${start_dir}/test_ws"
-  local test_files_dir="$start_dir/rosinstalls"
+  local ws="$2"
   local ws_src="${ws}/src"
-  local test_files=("${test_files_dir}/test.rosinstall" \
-                    "${test_files_dir}/testrec.rosinstall")
+  local test_file="$1"
   local install_file="${ws_src}/.rosinstall"
   local shell='bash'
   local ros_version='kinetic'
 
-  for test_file in "${test_files[@]}";
-  do 
-    if [[ ! -f "$test_file" ]]; then
-      chol "Workspace test file $test_file doesn't exist" --red
-      return 1
-    fi
+  if [[ ! -f "$test_file" ]]; then
+    chol "Workspace test file $test_file doesn't exist" --red
+    return 1
+  fi
 
-    echo ''
-    echo "Test $((++tests)): ${FUNCNAME[0]}"
+  echo ''
+  echo "Test $3: ${FUNCNAME[0]}"
 
-    mkdir -p "$ws_src" &> /dev/null
-    cp "$test_file" "$install_file"
-    cd "$ws"
+  mkdir -p "$ws_src" &> /dev/null
+  cp "$test_file" "$install_file"
+  cd "$ws"
 
-    echo "$offset Setting up mock workspace from $test_file"
-    wstool update -t "$ws_src" &> /dev/null
+  echo "$offset Setting up mock workspace from $test_file"
+  wstool update -t "$ws_src" &> /dev/null
 
-    echo "$offset Compiling mock workspace"
-    source /opt/ros/"$ros_version"/setup."$shell"
-    rosdep install --from-paths "$ws_src" --ignore-src --rosdistro="$ros_version" -y &> /dev/null
-    catkin_make -j10 &> /dev/null
+  echo "$offset Compiling mock workspace"
+  source /opt/ros/"$ros_version"/setup."$shell"
+  rosdep install --from-paths "$ws_src" --ignore-src --rosdistro="$ros_version" -y &> /dev/null
+  catkin_make -j10 &> /dev/null
 
-    echo "$offset Creating rosinstall"
-    cd "$ws_src" && create_rosinstall &> /dev/null
+  echo "$offset Creating rosinstall"
+  cd "$ws_src" && create_rosinstall &> /dev/null
 
-    if $(diff .rosinstall .rosinstall_generated &> /dev/null); then
-      chol "$offset TEST SUCCESS: generation successful" --green
-    else
-      add_fail; chol "$offset TEST FAIL: generation unsuccessful" --red
-    fi
-      
-    rm -rf "${ws}"
+  if $(diff .rosinstall .rosinstall_generated &> /dev/null); then
+    chol "$offset TEST SUCCESS: generation successful" --green
+  else
+    add_fail; chol "$offset TEST FAIL: generation unsuccessful" --red
+  fi
+    
+  rm -rf "${ws}"
+}
 
-  done  
+test_create_rosinstalls() {
+  local start_dir="$PWD"
+  local ws_test_1="${start_dir}/test_ws1"
+  local ws_test_2="${start_dir}/test_ws2"
+  local test_files_dir="${start_dir}/rosinstalls"
+  local test_files=("${test_files_dir}/test.rosinstall" \
+                    "${test_files_dir}/testrec.rosinstall")
+
+  echo ''
+  echo 'Creating mock catkin_workspaces to test .rosinstall generation.'
+  echo 'Grab a coffee, this can take a while ...'
+
+  ((++tests)); exec 3< <(test_create_rosinstall "${test_files[0]}" "$ws_test_1" $tests) 
+  sleep 1
+  ((++tests)); exec 4< <(test_create_rosinstall "${test_files[1]}" "$ws_test_2" $tests)
+
+  output_test_1=$(cat <&3)
+  if grep -q 'FAIL' "$output_test_1" &> /dev/null
+  then
+    add_fail
+  fi
+
+  output_test_2=$(cat <&4)
+  if grep -q 'FAIL' "$output_test_2" &> /dev/null
+  then
+    add_fail
+  fi
+
+  echo "$output_test_1"
+  echo "$output_test_2"
 }
 
 init
 
 test_valid_master
-test_create_rosinstall
+test_create_rosinstalls
 
 summary
