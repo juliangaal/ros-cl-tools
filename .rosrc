@@ -1,5 +1,35 @@
 #!/usr/bin/env bash
 
+show_connect_usage() {
+  local usage="Function 'connect':
+
+  Connect to ROS Master
+
+  options:
+    connect to host defined in ~/.ssh/config
+    connect to host manually by choosing option -v | --verbose
+
+  flags:
+    -h, --help  show help text
+    -v, --verbose manually set ROS_IP and ROS_MASTER_URI"
+
+  echo "$usage"
+}
+
+show_create_rosinstall_usage() {
+  usage="Function 'create_rosinstall_usage':
+  
+  Create .rosinstall file for wstool from existing catkin workspace
+
+  arguments:
+    output file. If left empty, will default to '.rosinstall'
+
+  flags:
+    -h, --help  show help text"
+
+  echo "$usage"
+}
+
 chol() {
   color=''
   nc='\033[0m'
@@ -11,7 +41,7 @@ chol() {
   else
     color='\033[0;31m'
   fi
-    
+
   echo -e "${color}${1}${nc}"
 }
 
@@ -19,20 +49,67 @@ external_ip() {
   return "${dig +short myip.opendns.com @resolver1.opendns.com}"
 }
 
-show_usage() {
-usage="$(basename "$0") [-h] [-s n] -- program to calculate the answer to life, the universe and everything
+create_rosinstall() {
+  local custom_name=''
+  local output_file=''
+  local rosinstall_file='.rosinstall_generated'
+  local git_dir='git'
+  local catkin_file='.catkin_workspace'
+  local num_packages=0
+  local offset='  '
 
-function: connect
-    -h, --help  show help text
-    -v, --verbose manually set ROS_IP and ROS_MASTER_URI"
+  if [[ "$1" == '-h' ]] || [[ "$1" == '--help' ]]; then
+    show_create_rosinstall_usage
+    return 1
+  fi
 
-  echo "$usage"
+  if [[ "${PWD##*/}" != 'src' ]] || [[ ! -f "${PWD%/*}/${catkin_file}" ]]; then
+    chol 'This commands needs to be run in /src of existing catkin workspace!' --red
+    return 1
+  fi
+
+  if [[ $# > 1 ]]; then
+    chol 'Invalid number of arguments'
+    show_create_rosinstall_usage
+    return 1
+  fi
+
+  if [[ $# -eq 0 ]]; then
+    output_file="$rosinstall_file"
+  else
+    custom_name="$1"
+    output_file="${custom_name}${rosinstall_file}"
+  fi
+
+  echo "Scanning $PWD"
+  echo ''
+
+  for directory in $(find -type d -printf '%d\t%P\n' | sort -r -nk1 | cut -f2-);
+  do
+    if [[ -d "$directory" ]] && [[ "${directory##*.}" == "${git_dir}" ]]; then
+      ros_package="${directory%/*}"
+      chol "$offset Found ROS package: $ros_package" --green
+
+      current_branch="$(git branch | grep \* | cut -d ' ' -f2)"
+      current_remote="$(git config --get remote.origin.url)"
+
+      echo "-git: " >> "$output_file"
+      echo "   local-name: $ros_package" >> "$output_file"
+      echo "   uri: $current_remote" >> "$output_file"
+      echo "   version: $current_branch" >> "$output_file"
+
+      ((++num_packages))
+    fi
+  done
+
+  echo ''
+  echo "Done. Created $output_file with $num_packages ROS Packages"
 }
 
-valid_host() { 
+valid_host() {
   local host=$1
   local stat=1
-  
+
   # check if valid ip address
   if [[ ! $host =~ ^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]]; then
     stat=1
@@ -42,11 +119,11 @@ valid_host() {
     host=($host)
     IFS=$OIFS
     if [[ ${host[0]} -le 255 && ${host[1]} -le 255 \
-        && ${host[2]} -le 255 && ${host[3]} -le 255 ]]; then 
-      stat=0 
+        && ${host[2]} -le 255 && ${host[3]} -le 255 ]]; then
+      stat=0
     fi
   fi
-  
+
   # check if valid host
   if [[ $stat -eq 1 ]] && [[ $host =~ ^([^0-9]*)$ ]]; then
     stat=0
@@ -112,7 +189,7 @@ valid_master() {
   if ( ! valid_user "$username" ); then return $stat; fi
 
   if ( ! valid_http "$http" ); then return $stat; fi
-  
+
   if ( ! valid_host "$addr" ); then return $stat; fi
 
   if ( ! valid_port "$master_port" ); then return $stat; fi
@@ -134,7 +211,7 @@ connection_status() {
   if [ $? -eq 0 ]; then
     status='Connected'
     chol "ROS Connection Status: $status" --green
-  else 
+  else
     status='Failed'
     chol "ROS Connection Status: $status" --red
   fi
@@ -177,7 +254,7 @@ connect() {
   if [[ ! $# -eq 1 ]]; then echo 'Invalid Number of Arguments!'; return 1; fi
 
   if [[ "$1" == '-h' || "$1" == '--help' ]]; then
-    show_usage
+    show_connect_usage
     return 0
   fi
 
@@ -199,7 +276,7 @@ connect() {
       break
     done
   fi
-  
+
   user=''
   user_found=1
 
@@ -255,7 +332,7 @@ connect() {
 source_ws() {
   version='kinetic'
   shell='bash'
-  catkin_file='.catkin_workspace'
+  local catkin_file='.catkin_workspace'
   worspaces_file='.ros_workspaces'
 
   if [[ ! -f "$catkin_file" ]]; then
