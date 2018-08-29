@@ -1,0 +1,29 @@
+# DecisionTree
+# clang > 4 and gcc >= 7 is required
+# Ubuntu 14.04
+sudo: required
+dist: trusty
+
+# Enable C++ support
+language: cpp
+
+matrix:
+  include:
+    - os: linux
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+          packages:
+            - g++-5
+      env:
+        - COMPILER=g++-5
+        - MATRIX_EVAL="CC=gcc-5 && CXX=g++-5"
+
+before_install:
+    - eval "${MATRIX_EVAL}"
+
+# Build steps
+script:
+    - cd test/install/ && chmod +x install_env.bash && ./install_env.bash
+    - cd .. && chmod +x tests && ./tests
