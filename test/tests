@@ -3,13 +3,11 @@
 num_failed=0
 tests=0
 offset='  '
-start=''
 
 
 init() {
-  source ../rosrc
+  source ../ros_cl_tools
   echo 'Running Tests'
-  start=`date +%s`
 }
 
 add_fail() {
@@ -24,7 +22,7 @@ summary() {
     chol "${num_failed}/${tests} Tests failed" --green
   fi
 
-  echo "Duration: $((($(date +%s)-$start)/60)) minutes. Done"
+  echo "Done"
 }
 
 test_valid_master() {
@@ -84,7 +82,8 @@ test_create_rosinstall() {
     add_fail; chol "$offset TEST FAIL: generation unsuccessful" --red
   fi
     
-  rm -rf "${ws}"
+  echo "$offset Deleting $ws"
+  rm -rf "$ws"
 }
 
 test_create_rosinstalls() {
