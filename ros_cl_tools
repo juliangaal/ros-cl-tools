@@ -64,20 +64,11 @@ create_rosinstall() {
   fi
 
   if [[ ! -f "${PWD%/*}/${catkin_file}" ]]; then
-    while true; do
     echolor 'This workspace has not been compiled yet or is not a catkin workspace at all' --yellow
-    read -p 'Do you want to continue? ' yn
-      case $yn in
-        [Yy]* ) break;;
-        [Nn]* ) exit;;
-        * ) echo "Please answer yes or no.";;
-      esac
-    done
   fi
 
   if [[ "${PWD##*/}" != 'src' ]]; then
-    echolor 'This commands needs to be run in /src of existing catkin workspace!' --red
-    return 1
+    echolor 'This commands needs to be run in /src of existing catkin workspace!. Output will be garbage' --yellow
   fi
 
   if [[ $# -gt 1 ]]; then

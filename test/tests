@@ -114,10 +114,7 @@ test_create_rosinstall() {
   stat_str "Setting up mock workspace from $test_file .."
   wstool update -t "$ws_src" &> /dev/null
 
-  stat_str "Compiling mock workspace .."
   source /opt/ros/"$ros_version"/setup."$shell"
-  rosdep install --from-paths "$ws_src" --ignore-src --rosdistro="$ros_version" -y &> /dev/null
-  catkin_make -j10 &> /dev/null
 
   stat_str "Creating rosinstall .."
   cd "$ws_src" && create_rosinstall &> /dev/null
