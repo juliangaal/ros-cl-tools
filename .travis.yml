@@ -36,4 +36,4 @@ before_script:
 
 # Build steps
 script:
-    - cd test/ && chmod +x tests && ./tests
+  - cd test/ && chmod +x tests && time ./tests
