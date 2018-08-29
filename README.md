@@ -1,9 +1,8 @@
-# rosrc
+# ros_cl_tools - ROS Command Line Tools
 
-All the ROS things you source in `.bashrc` are in a single file, for clarity.
+ROS Command Line Tools are a number of bash function that make your life easier while developing with ROS
 
-
-## Functions
+## Features
 
 ### Connect
 ```
@@ -18,7 +17,7 @@ flags:
   -v, --verbose manually set ROS_IP and ROS_MASTER_URI"
 ```
 
-### Create .rosinstall
+### Create .rosinstall from existing catkin_workspace
 ```
 Create .rosinstall file for wstool from existing catkin workspace
 
