@@ -2,12 +2,12 @@
 
 num_failed=0
 tests=0
-offset='  '
+dir=$(cd "$(dirname "${BASH_SOURCE[0]}" )" && pwd)
 
 
 init() {
   source ../ros_cl_tools
-  echo 'Running Tests'
+  echo "Running Tests in $dir"
 }
 
 add_fail() {
@@ -17,77 +17,125 @@ add_fail() {
 summary() {
   echo ''
   if [[ ! $num_failed -eq 0 ]]; then
-    chol "${num_failed}/${tests} Tests failed" --red
+    echolor "${num_failed}/${tests} Tests failed" --red
 	else
-    chol "${num_failed}/${tests} Tests failed" --green
+    echolor "${num_failed}/${tests} Tests failed" --green
   fi
 
   echo "Done"
 }
 
+run_shellcheck() {
+  shellcheck -V &> /dev/null
+  if [[ $# -eq 0 ]]; then
+    while true; do
+    read -p 'Want to run shellcheck? [yn] ' yn
+      case $yn in
+        [Yy]* ) shellcheck ../ros_cl_tools; break;;
+        [Nn]* ) exit;;
+        * ) echo "Please answer yes or no.";;
+      esac
+    done
+  fi
+}
+
+result_to_str() {
+  local result=$1
+
+  if [[ $result -eq 0 ]]; then
+    echo 'correctly identified as valid  '
+  else
+    echo 'correctly identified as invalid'
+  fi
+}
+
+fail_str() {
+  local output=$1
+  local fail_str='[ FAIL ]'
+
+  echolor "$fail_str $output" --red
+}
+
+succ_str() {
+  local output=$1
+  local succ_str='[  OK  ]'
+
+  echolor "$succ_str $output" --green
+}
+
+stat_str() {
+  local output=$1
+  local offset='[STATUS]'
+  echo "$offset $1"
+}
+
 test_valid_master() {
   echo ''
-  echo "Test $((++tests)): ${FUNCNAME[0]}"
+  echo "[Test $((++tests))] ${FUNCNAME[0]}"
 
   masters=('https://dfki@192.168.0.1:11311' 'https://dfki@uos.de' \
            'https://dfki@uos.de:11311' 'https://flamara@informatik.uos.de:11311' \
            'http' 'gdgdkjl567')
   results=(0 1 0 0 1 1)
 
-  if [[ ! ${#masters[@]} -eq ${#results[@]} ]]; then add_fail; chol 'invalid testing parameters' --red; return 1; fi
+  if [[ ! ${#masters[@]} -eq ${#results[@]} ]]; then add_fail; echolor 'invalid testing parameters' --red; return 1; fi
 
   for i in "${!masters[@]}"
   do
     valid_master "${masters[i]}" &> /dev/null
 
-    if [[ $? -eq ${results[i]} ]]; then chol "$offset TEST SUCCESS: ${masters[i]}" --green
-  else add_fail; chol "$offset TEST FAIL   :${masters[i]}" --red; fi
+  if [[ $? -eq ${results[i]} ]]; then succ_str "$(result_to_str ${results[i]}): ${masters[i]}" 
+  else add_fail; fail_str "$(result_to_str ${results[i]}): ${masters[i]}"; fi
   done
 }
 
 test_create_rosinstall() {
   local ws="$2"
+  local result_dir="${dir}/results"
   local ws_src="${ws}/src"
   local test_file="$1"
   local install_file="${ws_src}/.rosinstall"
+  local generated_file="${install_file}_generated"
   local shell='bash'
   local ros_version='kinetic'
 
   if [[ ! -f "$test_file" ]]; then
-    chol "Workspace test file $test_file doesn't exist" --red
+    echolor "Workspace test file $test_file doesn't exist" --red
     return 1
   fi
 
   echo ''
-  echo "Test $3: ${FUNCNAME[0]}"
+  echo "[Test $3] ${FUNCNAME[0]}"
 
   mkdir -p "$ws_src" &> /dev/null
   cp "$test_file" "$install_file"
   cd "$ws"
 
-  echo "$offset Setting up mock workspace from $test_file"
+  stat_str "Setting up mock workspace from $test_file .."
   wstool update -t "$ws_src" &> /dev/null
 
-  echo "$offset Compiling mock workspace"
+  stat_str "Compiling mock workspace .."
   source /opt/ros/"$ros_version"/setup."$shell"
   rosdep install --from-paths "$ws_src" --ignore-src --rosdistro="$ros_version" -y &> /dev/null
   catkin_make -j10 &> /dev/null
 
-  echo "$offset Creating rosinstall"
+  stat_str "Creating rosinstall .."
   cd "$ws_src" && create_rosinstall &> /dev/null
 
   if $(diff .rosinstall .rosinstall_generated &> /dev/null); then
-    chol "$offset TEST SUCCESS: generation successful" --green
+    succ_str "rosinstall generation successful"
   else
-    add_fail; chol "$offset TEST FAIL: generation unsuccessful" --red
+    add_fail; fail_str "rosinstall generation unsuccessful"
   fi
-    
-  echo "$offset Deleting $ws"
+
+  if [[ ! -d "$result_dir" ]]; then mkdir "$result_dir"; fi
+
+  cp "${generated_file}" "${test_file}}"
   rm -rf "$ws"
 }
 
 test_create_rosinstalls() {
-  local start_dir="$PWD"
+  local start_dir="$dir"
   local ws_test_1="${start_dir}/test_ws1"
   local ws_test_2="${start_dir}/test_ws2"
   local test_files_dir="${start_dir}/rosinstalls"
@@ -124,3 +172,5 @@ test_valid_master
 test_create_rosinstalls
 
 summary
+
+run_shellcheck

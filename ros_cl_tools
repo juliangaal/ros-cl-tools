@@ -30,7 +30,7 @@ show_create_rosinstall_usage() {
   echo "$usage"
 }
 
-chol() {
+echolor() {
   color=''
   nc='\033[0m'
 
@@ -65,23 +65,23 @@ create_rosinstall() {
 
   if [[ ! -f "${PWD%/*}/${catkin_file}" ]]; then
     while true; do
-    chol 'This workspace has not been compiled yet or is not a catkin workspace at all' --yellow
+    echolor 'This workspace has not been compiled yet or is not a catkin workspace at all' --yellow
     read -p 'Do you want to continue? ' yn
       case $yn in
         [Yy]* ) break;;
         [Nn]* ) exit;;
         * ) echo "Please answer yes or no.";;
-     esac
+      esac
     done
   fi
 
   if [[ "${PWD##*/}" != 'src' ]]; then
-    chol 'This commands needs to be run in /src of existing catkin workspace!' --red
+    echolor 'This commands needs to be run in /src of existing catkin workspace!' --red
     return 1
   fi
 
-  if [[ $# > 1 ]]; then
-    chol 'Invalid number of arguments'
+  if [[ $# -gt 1 ]]; then
+    echolor 'Invalid number of arguments'
     show_create_rosinstall_usage
     return 1
   fi
@@ -100,15 +100,17 @@ create_rosinstall() {
   do  # if submodule, git will detach head, and replace .git/ folder with .git file. Therefore -d skips submodule
     if [[ -d "$directory" ]] && [[ "${directory##*.}" == "${git_dir}" ]]; then
       ros_package="${directory%/*}"
-      chol "$offset Found ROS package: $ros_package" --green
+      echolor "$offset Found ROS package: $ros_package" --green
 
       current_branch="$(cd "$ros_package" && git branch | grep \* | cut -d ' ' -f2)"
       current_remote="$(cd "$ros_package" && git config --get remote.origin.url)"
 
-      echo "- git:" >> "$output_file"
-      echo "    local-name: $ros_package" >> "$output_file"
-      echo "    uri: $current_remote" >> "$output_file"
-      echo "    version: $current_branch" >> "$output_file"
+      {
+        echo "- git:"
+        echo "    local-name: $ros_package"
+        echo "    uri: $current_remote"
+        echo "    version: $current_branch"
+      } >> "$output_file"
 
       ((++num_packages))
     fi
@@ -141,7 +143,7 @@ valid_host() {
     stat=0
   fi
 
-  if [[ $stat -eq 1 ]]; then chol 'Invalid!' --red; fi
+  if [[ $stat -eq 1 ]]; then echolor 'Invalid!' --red; fi
   return $stat
 }
 
@@ -150,7 +152,7 @@ valid_port() {
   local stat=1
 
   if [[ ! $port =~ ^[0-9]{0,5}$  && ! ${port##*:} -le 65535 ]]; then
-    chol 'invalid!' --red
+    echolor 'invalid!' --red
     return $stat
   fi
 
@@ -163,7 +165,7 @@ valid_http() {
   local stat=1
 
   if [[ ! $http =~ ^[h-t]{4,5}\:$ ]]; then
-    chol 'invalid!' --red
+    echolor 'invalid!' --red
     return $stat
   fi
 
@@ -176,7 +178,7 @@ valid_user() {
   local stat=1
 
   if [[ ! $username =~ ^[a-zA-Z]{1,30}$ ]]; then
-    chol 'invalid!' --red
+    echolor 'invalid!' --red
     return $stat
   fi
 
@@ -222,10 +224,10 @@ connection_status() {
   ping -q -c3 "${hostname}" &> /dev/null
   if [ $? -eq 0 ]; then
     status='Connected'
-    chol "ROS Connection Status: $status" --green
+    echolor "ROS Connection Status: $status" --green
   else
     status='Failed'
-    chol "ROS Connection Status: $status" --red
+    echolor "ROS Connection Status: $status" --red
   fi
 
   status
@@ -248,7 +250,7 @@ connect_verbose() {
   while true; do
     read -p 'Your ROS Master URI: ' uri
     if ( ! valid_master "$uri" ); then
-      chol 'Invalid ROS Master URI. Forgot the port maybe?' --yellow
+      echolor 'Invalid ROS Master URI. Forgot the port maybe?' --yellow
       continue
     fi
     master="$uri"
@@ -277,7 +279,7 @@ connect() {
 
   ip="$(dig +short myip.opendns.com @resolver1.opendns.com)" &> /dev/null
   if [[ -z "$ip" ]]; then
-    chol 'Cannot get IP automatically' --yellow
+    echolor 'Cannot get IP automatically' --yellow
     while true; do
       read -p 'Your IP: ' ipp
       if (! valid_ip "$ipp"); then
@@ -330,9 +332,9 @@ connect() {
 
   done < $file
 
-  if [[ $host_found -eq 1 ]]; then chol 'Cannot find host!'; return 1; fi
-  if [[ $hostname_found -eq 1 ]]; then chol 'Cannot find user!'; return 1; fi
-  if [[ $user_found -eq 1 ]]; then chol 'Cannot find hostname!'; return 1; fi
+  if [[ $host_found -eq 1 ]]; then echolor 'Cannot find host!'; return 1; fi
+  if [[ $hostname_found -eq 1 ]]; then echolor 'Cannot find user!'; return 1; fi
+  if [[ $user_found -eq 1 ]]; then echolor 'Cannot find hostname!'; return 1; fi
 
   export ROS_IP="$ip"
   export ROS_HOSTNAME="$ip"
@@ -345,7 +347,7 @@ source_ws() {
   version='kinetic'
   shell='bash'
   local catkin_file='.catkin_workspace'
-  worspaces_file='.ros_workspaces'
+  local worspaces_file='.ros_workspaces'
 
   if [[ ! -f "$catkin_file" ]]; then
     return 0
