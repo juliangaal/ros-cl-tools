@@ -51,27 +51,27 @@ result_to_str() {
 
 fail_str() {
   local output=$1
-  local fail_str='[ FAIL ]'
+  local fail_str='[  FAIL  ]'
 
   echolor "$fail_str $output" --red
 }
 
 succ_str() {
   local output=$1
-  local succ_str='[  OK  ]'
+  local succ_str='[   OK   ]'
 
   echolor "$succ_str $output" --green
 }
 
 stat_str() {
   local output=$1
-  local offset='[STATUS]'
+  local offset='[ STATUS ]'
   echo "$offset $1"
 }
 
 test_valid_master() {
   echo ''
-  echo "[Test $((++tests))] ${FUNCNAME[0]}"
+  echo "[ TEST $((++tests)) ] ${FUNCNAME[0]}"
 
   masters=('https://dfki@192.168.0.1:11311' 'https://dfki@uos.de' \
            'https://dfki@uos.de:11311' 'https://flamara@informatik.uos.de:11311' \
@@ -105,7 +105,7 @@ test_create_rosinstall() {
   fi
 
   echo ''
-  echo "[Test $3] ${FUNCNAME[0]}"
+  echo "[ TEST $3 ] ${FUNCNAME[0]}"
 
   mkdir -p "$ws_src" &> /dev/null
   cp "$test_file" "$install_file"
@@ -143,8 +143,8 @@ test_create_rosinstalls() {
                     "${test_files_dir}/testrec.rosinstall")
 
   echo ''
-  echo 'Creating mock catkin_workspaces to test .rosinstall generation.'
-  echo 'Grab a coffee, this can take a while ...'
+  stat_str 'Creating mock catkin_workspaces to test .rosinstall generation.'
+  stat_str 'Grab a coffee, this can take a while ...'
 
   ((++tests)); exec 3< <(test_create_rosinstall "${test_files[0]}" "$ws_test_1" $tests) 
   sleep 1
@@ -172,5 +172,3 @@ test_valid_master
 test_create_rosinstalls
 
 summary
-
-run_shellcheck
