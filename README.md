@@ -26,6 +26,4 @@ arguments:
 
 flags:
   -h, --help  show help text"
-
-echo "$usage"
 ```
