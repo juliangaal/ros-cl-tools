@@ -69,7 +69,7 @@ create_rosinstall() {
     read -p 'Do you want to continue? ' yn
       case $yn in
         [Yy]* ) break;;
-        [Nn]* ) return 1;;
+        [Nn]* ) exit;;
         * ) echo "Please answer yes or no.";;
      esac
     done
@@ -97,7 +97,7 @@ create_rosinstall() {
   echo ''
 
   for directory in $(find -type d -printf '%d\t%P\n' | sort -r -nk1 | cut -f2);
-  do
+  do  # if submodule, git will detach head, and replace .git/ folder with .git file. Therefore -d skips submodule
     if [[ -d "$directory" ]] && [[ "${directory##*.}" == "${git_dir}" ]]; then
       ros_package="${directory%/*}"
       chol "$offset Found ROS package: $ros_package" --green
