@@ -1,0 +1,355 @@
+#!/usr/bin/env bash
+
+show_connect_usage() {
+  local usage="Function 'connect':
+
+  Connect to ROS Master
+
+  options:
+    connect to host defined in ~/.ssh/config
+    connect to host manually by choosing option -v | --verbose
+
+  flags:
+    -h, --help  show help text
+    -v, --verbose manually set ROS_IP and ROS_MASTER_URI"
+
+  echo "$usage"
+}
+
+show_create_rosinstall_usage() {
+  usage="Function 'create_rosinstall_usage':
+
+  Create .rosinstall file for wstool from existing catkin workspace
+
+  arguments:
+    output file. If left empty, will default to '.rosinstall'
+
+  flags:
+    -h, --help  show help text"
+
+  echo "$usage"
+}
+
+echolor() {
+  color=''
+  nc='\033[0m'
+
+  if [[ "$2" == "--yellow" ]]; then
+    color='\033[0;33m'
+  elif [[ "$2" == "--green" ]]; then
+    color='\033[0;32m'
+  else
+    color='\033[0;31m'
+  fi
+
+  echo -e "${color}${1}${nc}"
+}
+
+external_ip() {
+  return "${dig +short myip.opendns.com @resolver1.opendns.com}"
+}
+
+create_rosinstall() {
+  local custom_name=''
+  local output_file=''
+  local rosinstall_file='.rosinstall_generated'
+  local git_dir='git'
+  local catkin_file='.catkin_workspace'
+  local num_packages=0
+  local offset='  '
+
+  if [[ "$1" == '-h' ]] || [[ "$1" == '--help' ]]; then
+    show_create_rosinstall_usage
+    return 1
+  fi
+
+  if [[ ! -f "${PWD%/*}/${catkin_file}" ]]; then
+    echolor 'This workspace has not been compiled yet or is not a catkin workspace at all' --yellow
+  fi
+
+  if [[ "${PWD##*/}" != 'src' ]]; then
+    echolor 'This commands needs to be run in /src of existing catkin workspace!. Output will be garbage' --yellow
+  fi
+
+  if [[ $# -gt 1 ]]; then
+    echolor 'Invalid number of arguments'
+    show_create_rosinstall_usage
+    return 1
+  fi
+
+  if [[ $# -eq 0 ]]; then
+    output_file="${PWD}/${rosinstall_file}"
+  else
+    custom_name="$1"
+    output_file="${PWD}/${custom_name}${rosinstall_file}"
+  fi
+
+  echo "Scanning $PWD"
+  echo ''
+
+  for directory in $(find -type d -printf '%d\t%P\n' | sort -r -nk1 | cut -f2);
+  do  # if submodule, git will detach head, and replace .git/ folder with .git file. Therefore -d skips submodule
+    if [[ -d "$directory" ]] && [[ "${directory##*.}" == "${git_dir}" ]]; then
+      ros_package="${directory%/*}"
+      echolor "$offset Found ROS package: $ros_package" --green
+
+      current_branch="$(cd "$ros_package" && git branch | grep \* | cut -d ' ' -f2)"
+      current_remote="$(cd "$ros_package" && git config --get remote.origin.url)"
+
+      {
+        echo "- git:"
+        echo "    local-name: $ros_package"
+        echo "    uri: $current_remote"
+        echo "    version: $current_branch"
+      } >> "$output_file"
+
+      ((++num_packages))
+    fi
+  done
+
+  echo ''
+  echo "Done. Created ${PWD}/${output_file} with $num_packages ROS Packages"
+}
+
+valid_host() {
+  local host=$1
+  local stat=1
+
+  # check if valid ip address
+  if [[ ! $host =~ ^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]]; then
+    stat=1
+  else
+    OIFS=$IFS
+    IFS='.'
+    host=($host)
+    IFS=$OIFS
+    if [[ ${host[0]} -le 255 && ${host[1]} -le 255 \
+        && ${host[2]} -le 255 && ${host[3]} -le 255 ]]; then
+      stat=0
+    fi
+  fi
+
+  # check if valid host
+  if [[ $stat -eq 1 ]] && [[ $host =~ ^([^0-9]*)$ ]]; then
+    stat=0
+  fi
+
+  if [[ $stat -eq 1 ]]; then echolor 'Invalid!' --red; fi
+  return $stat
+}
+
+valid_port() {
+  local port=$1
+  local stat=1
+
+  if [[ ! $port =~ ^[0-9]{0,5}$  && ! ${port##*:} -le 65535 ]]; then
+    echolor 'invalid!' --red
+    return $stat
+  fi
+
+  stat=0
+  return $stat
+}
+
+valid_http() {
+  local http=$1
+  local stat=1
+
+  if [[ ! $http =~ ^[h-t]{4,5}\:$ ]]; then
+    echolor 'invalid!' --red
+    return $stat
+  fi
+
+  stat=0
+  return $stat
+}
+
+valid_user() {
+  local username=$1
+  local stat=1
+
+  if [[ ! $username =~ ^[a-zA-Z]{1,30}$ ]]; then
+    echolor 'invalid!' --red
+    return $stat
+  fi
+
+  stat=0
+  return $stat
+}
+
+valid_master() {
+
+  if [[ ! $# -eq 1 ]]; then echo "Invalid number of arguments (valid_master)."; return 1; fi
+
+  local hostname=$1
+  local stat=1
+
+  local untilAt="${hostname%%@*}"
+  local username="${untilAt##*/}"
+  local http="${untilAt%%//*}"
+  local afterAt="${hostname##*@}"
+  local addr="${afterAt%%:*}"
+  local master_port="${afterAt##*:}"
+
+  if ( ! valid_user "$username" ); then return $stat; fi
+
+  if ( ! valid_http "$http" ); then return $stat; fi
+
+  if ( ! valid_host "$addr" ); then return $stat; fi
+
+  if ( ! valid_port "$master_port" ); then return $stat; fi
+
+  stat=0
+  return $stat
+}
+
+status() {
+  echo "ROS IP: $ROS_IP"
+  echo "ROS Hostname: $ROS_HOSTNAME"
+  echo "ROS Master URI: $ROS_MASTER_URI"
+}
+
+connection_status() {
+  echo '---'
+  hostname="${ROS_MASTER_URI#*/}"
+  ping -q -c3 "${hostname}" &> /dev/null
+  if [ $? -eq 0 ]; then
+    status='Connected'
+    echolor "ROS Connection Status: $status" --green
+  else
+    status='Failed'
+    echolor "ROS Connection Status: $status" --red
+  fi
+
+  status
+}
+
+connect_verbose() {
+  ip=''
+  master=''
+
+  while true; do
+    read -p 'Your IP: ' ipp
+    if (! valid_ip "$ipp"); then
+      echo "Invalid IP address!"
+      continue
+    fi
+    ip="$ipp"
+    break
+  done
+
+  while true; do
+    read -p 'Your ROS Master URI: ' uri
+    if ( ! valid_master "$uri" ); then
+      echolor 'Invalid ROS Master URI. Forgot the port maybe?' --yellow
+      continue
+    fi
+    master="$uri"
+    break
+  done
+
+  export ROS_IP="$ip"
+  export ROS_HOSTNAME="$ip"
+  export ROS_MASTER_URI="$master"
+
+  connection_status
+}
+
+connect() {
+  if [[ ! $# -eq 1 ]]; then echo 'Invalid Number of Arguments!'; return 1; fi
+
+  if [[ "$1" == '-h' || "$1" == '--help' ]]; then
+    show_connect_usage
+    return 0
+  fi
+
+  if [[ "$1" == '-v' || "$1" == "--verbose" ]]; then
+    connect_verbose
+    return 0
+  fi
+
+  ip="$(dig +short myip.opendns.com @resolver1.opendns.com)" &> /dev/null
+  if [[ -z "$ip" ]]; then
+    echolor 'Cannot get IP automatically' --yellow
+    while true; do
+      read -p 'Your IP: ' ipp
+      if (! valid_ip "$ipp"); then
+        echo "Invalid IP address!"
+        continue
+      fi
+      ip="$ipp"
+      break
+    done
+  fi
+
+  user=''
+  user_found=1
+
+  port='11311'
+
+  host=''
+  host_found=1
+
+  hostname=''
+  hostname_found=1
+
+  file='./.config'
+
+  while read line
+  do
+    front="${line%% *}"
+    back="${line##* }"
+
+    if [[ "$front" == 'Host' ]]; then
+      host="$back"
+      host_found=0
+      continue
+    fi
+
+    if [[ $host_found -eq 0 ]]; then
+      if [[ "$front" == 'User' ]]; then
+        user="$back"
+        user_found=0
+        continue
+      fi
+      if [[ "$front" == 'HostName' ]]; then
+        hostname="$back"
+        hostname_found=0
+        continue
+      fi
+    fi
+
+    if [[ $host_found -eq 1 && $hostname_found -eq 1 && $user_found -eq 1 ]]; then break; fi
+
+  done < $file
+
+  if [[ $host_found -eq 1 ]]; then echolor 'Cannot find host!'; return 1; fi
+  if [[ $hostname_found -eq 1 ]]; then echolor 'Cannot find user!'; return 1; fi
+  if [[ $user_found -eq 1 ]]; then echolor 'Cannot find hostname!'; return 1; fi
+
+  export ROS_IP="$ip"
+  export ROS_HOSTNAME="$ip"
+  export ROS_MASTER_URI="https://${user}@${hostname}:${port}"
+
+  connection_status
+}
+
+source_ws() {
+  version='kinetic'
+  shell='bash'
+  local catkin_file='.catkin_workspace'
+  local worspaces_file='.ros_workspaces'
+
+  if [[ ! -f "$catkin_file" ]]; then
+    return 0
+  fi
+
+  if [[ "$PWD" == '/home/chitt/julian/reground_workspace' ]]; then
+    ros=/opt/ros/${version}/setup.${shell}
+    ws=devel/setup.${shell}
+    source "$ros"
+    source "$ws"
+  fi
+}
+
+export PROMPT_COMMAND=source_ws
