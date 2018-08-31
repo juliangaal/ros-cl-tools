@@ -1,6 +1,6 @@
 # ros_cl_tools - ROS Command Line Tools
 
-[![Test Status](https://travis-ci.org/juliangaal/ros_cl_tools.svg?branch=master)](https://travis-ci.org/juliangaal/ros_cl_tools)
+[![CircleCI](https://circleci.com/gh/juliangaal/ros_cl_tools.svg?style=svg)](https://circleci.com/gh/juliangaal/ros_cl_tools)
 
 ROS Command Line Tools are a number of bash function that make your life easier while developing with ROS
 

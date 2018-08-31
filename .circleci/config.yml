@@ -1,0 +1,8 @@
+version: 2
+jobs:
+  build:
+    docker:
+      - image: ros:kinetic-ros-base
+    steps:
+      - checkout
+      - run: chmod +x test/tests && cd test && ./tests
