@@ -3,11 +3,19 @@
 num_failed=0
 tests=0
 dir=$(cd "$(dirname "${BASH_SOURCE[0]}" )" && pwd)
+result_dir="${dir}/results"
 
 
 init() {
   source ../ros_cl_tools
   echo "Running Tests in $dir"
+  
+  if [[ -d "$result_dir" ]]; then
+    rm -rf "${result_dir}"
+    mkdir "$result_dir"
+	else
+		mkdir "$result_dir"
+	fi  
 }
 
 add_fail() {
@@ -91,7 +99,6 @@ test_valid_master() {
 
 test_create_rosinstall() {
   local ws="$2"
-  local result_dir="${dir}/results"
   local ws_src="${ws}/src"
   local test_file="$1"
   local install_file="${ws_src}/.rosinstall"
@@ -103,6 +110,8 @@ test_create_rosinstall() {
     echolor "Workspace test file $test_file doesn't exist" --red
     return 1
   fi
+
+  
 
   echo ''
   echo "[ TEST $3 ] ${FUNCNAME[0]}"
@@ -127,7 +136,8 @@ test_create_rosinstall() {
 
   if [[ ! -d "$result_dir" ]]; then mkdir "$result_dir"; fi
 
-  cp "${generated_file}" "${test_file}}"
+  echo "${generated_file} to ${result_dir}/${test_file##*/}_generated"
+  cp "${generated_file}" "${result_dir}"/"${generated_file##*/}"
   rm -rf "$ws"
 }
 
