@@ -344,49 +344,83 @@ connect() {
 
 save_ws() {
 	local config_dir="${HOME}/.ros_cl_tools"
-  local workspaces_file="${config_dir}/ros_workspaces"
-	local workspace_exists=1
-	
-	if [[ ! -f "$workspaces_file" ]]; then
-		echo "$PWD" > "$workspaces_file" 
-		return 0
-	fi
+  local workspace_file="${config_dir}/${PWD##*/}.ros_ws"
+  local workspace_exists=1
 
-	while read line
-	do
-		if [[ "$line" == "$PWD" ]]; then
-			workspace_exists=0; 
-		fi
-	done < "$workspaces_file"
-  
-	if [[ $workspace_exists -eq 1 ]]; then echo "$PWD" >> "$workspaces_file"; fi
+  if [[ ! -f "$workspace_file" ]]; then
+    {
+      echo "local_name: ${PWD##*/}"
+      echo "location: ${PWD}"
+    } > "$workspace_file"
+  fi
 }
 
+# TODO get default values from config file
 source_ws() {
-	local version='kinetic'
-	local shell='bash'
+  local default_version='kinetic'
+  local default_shell='bash'
+  local ros=''
+  local ws=''
 
-	ros="/opt/ros/${version}/setup.${shell}"
-  ws="devel/setup.${shell}"
-   		
+  if [[ $# -gt 2 ]]; then
+    return 0
+  fi
+
+  if [[ "$1" == '--create' ]]; then
+    {
+      echo "ros_version: $default_version"
+      echo "shell: $default_shell"
+    } > "${PWD}/$2"
+    ros="/opt/ros/${default_version}/setup.${default_shell}"
+    ws="devel/setup.${default_shell}"
+  fi
+
+  if [[ "$1" == '--from' ]]; then
+    local line_num=0
+    local version=''
+    local shell=''
+    while read line
+    do
+      property="${line##* }"
+      if [[ $line_num -eq 0 ]]; then version="$property";   fi
+      if [[ $line_num -eq 1 ]]; then shell="$property"; fi
+      ((++line_num))
+    done < "${PWD}/$2"
+
+    ros="/opt/ros/${version}/setup.${shell}"
+    ws="devel/setup.${shell}"
+  fi
+
+  if [[ $# -eq 0 ]]; then
+    ros="/opt/ros/${default_version}/setup.${default_shell}"
+    ws="devel/setup.${default_shell}"
+  fi
+
 	source "$ros"
   source "$ws"
 }
 
 ws_checker() {
 	local catkin_file='.catkin_workspace'
+  local config='.workspace_config'
 
   if [[ ! -f "$catkin_file" ]]; then
     return 0
   fi
 
   local catkin_file='.catkin_workspace'
-	
-	if [[ -f "$catkin_file" ]]; then 
-		source_ws
-		save_ws 
-	fi
+
+	if [[ -f "$catkin_file" ]] && [[ -f "$config" ]]; then
+		source_ws --from "$config"
+		save_ws
+  elif [[ -f "$catkin_file" ]]; then
+    source_ws --create "$config"
+    save_ws
+  else
+    :
+  fi
 }
 
 export PROMPT_COMMAND=ws_checker
+export ROS_CL_TOOLS_CONFIG_DIR="$HOME/.ros_cl_tools"
 init
