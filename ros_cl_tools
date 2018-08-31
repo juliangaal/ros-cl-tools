@@ -30,6 +30,14 @@ show_create_rosinstall_usage() {
   echo "$usage"
 }
 
+
+init() {
+	local config_dir="${HOME}/.ros_cl_tools"
+	if [[ ! -d "$config_dir" ]]; then
+		mkdir "$config_dir" || echolor 'Failed to create config directory!' --red
+	fi
+}
+
 echolor() {
   color=''
   nc='\033[0m'
@@ -321,7 +329,7 @@ connect() {
 
     if [[ $host_found -eq 1 && $hostname_found -eq 1 && $user_found -eq 1 ]]; then break; fi
 
-  done < $file
+  done < "$file"
 
   if [[ $host_found -eq 1 ]]; then echolor 'Cannot find host!'; return 1; fi
   if [[ $hostname_found -eq 1 ]]; then echolor 'Cannot find user!'; return 1; fi
@@ -334,22 +342,51 @@ connect() {
   connection_status
 }
 
+save_ws() {
+	local config_dir="${HOME}/.ros_cl_tools"
+  local workspaces_file="${config_dir}/ros_workspaces"
+	local workspace_exists=1
+	
+	if [[ ! -f "$workspaces_file" ]]; then
+		echo "$PWD" > "$workspaces_file" 
+		return 0
+	fi
+
+	while read line
+	do
+		if [[ "$line" == "$PWD" ]]; then
+			workspace_exists=0; 
+		fi
+	done < "$workspaces_file"
+  
+	if [[ $workspace_exists -eq 1 ]]; then echo "$PWD" >> "$workspaces_file"; fi
+}
+
 source_ws() {
-  version='kinetic'
-  shell='bash'
-  local catkin_file='.catkin_workspace'
-  local worspaces_file='.ros_workspaces'
+	local version='kinetic'
+	local shell='bash'
+
+	ros="/opt/ros/${version}/setup.${shell}"
+  ws="devel/setup.${shell}"
+   		
+	source "$ros"
+  source "$ws"
+}
+
+ws_checker() {
+	local catkin_file='.catkin_workspace'
 
   if [[ ! -f "$catkin_file" ]]; then
     return 0
   fi
 
-  if [[ "$PWD" == '/home/chitt/julian/reground_workspace' ]]; then
-    ros=/opt/ros/${version}/setup.${shell}
-    ws=devel/setup.${shell}
-    source "$ros"
-    source "$ws"
-  fi
+  local catkin_file='.catkin_workspace'
+	
+	if [[ -f "$catkin_file" ]]; then 
+		source_ws
+		save_ws 
+	fi
 }
 
-export PROMPT_COMMAND=source_ws
+export PROMPT_COMMAND=ws_checker
+init
