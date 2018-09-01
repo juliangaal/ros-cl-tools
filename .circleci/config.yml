@@ -48,6 +48,22 @@ jobs:
             chmod +x test/tests
             chmod +x test/test_melodic
             cd test && ./test_melodic
+  lunar:
+    docker:
+      - image: ros:lunar-ros-base
+    steps:
+      - checkout
+      - run:
+          name: Install Dependencies
+          command: |
+            chmod +x test/install/install_env.bash
+            ./test/install/install_env.bash
+      - run:
+          name: Run Tests
+          command: |
+            chmod +x test/tests
+            chmod +x test/test_lunar
+            cd test && ./test_lunar
 
 workflows:
   version: 2
@@ -56,3 +72,4 @@ workflows:
       - indigo
       - kinetic
       - melodic
+      - lunar
