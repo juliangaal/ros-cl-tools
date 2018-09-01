@@ -40,12 +40,14 @@ jobs:
       - run:
           name: Install Dependencies
           command: |
+            chmod +x test/install/install_env.bash
+            ./test/install/install_env.bash
+      - run:
+          name: Run Tests
+          command: |
             chmod +x test/tests
             chmod +x test/test_melodic
             cd test && ./test_melodic
-      - run:
-          name: Run Tests
-          command: chmod +x test/tests && cd test && ./tests
 
 workflows:
   version: 2
