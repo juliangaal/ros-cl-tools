@@ -31,5 +31,5 @@ flags:
 ```
 
 ## TODO
-[] connect to ~/.ssh/config/.config?
-[] look at bats
+- [ ] connect to ~/.ssh/config/.config?
+- [ ] look at bats
