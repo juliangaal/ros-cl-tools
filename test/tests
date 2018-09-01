@@ -4,18 +4,18 @@ num_failed=0
 tests=0
 dir=$(cd "$(dirname "${BASH_SOURCE[0]}" )" && pwd)
 result_dir="${dir}/results"
-
+test_workspaces=("${dir}/test_ws2" "${dir}/test_ws1")
 
 init() {
   source ../ros_cl_tools
   echo "Running Tests in $dir"
-  
+
   if [[ -d "$result_dir" ]]; then
     rm -rf "${result_dir}"
     mkdir "$result_dir"
 	else
 		mkdir "$result_dir"
-	fi  
+	fi
 }
 
 add_fail() {
@@ -23,14 +23,19 @@ add_fail() {
 }
 
 summary() {
+  for ws in "${test_workspaces[@]}"
+  do
+    rm -rf "$ws"
+  done
+
   echo ''
   if [[ ! $num_failed -eq 0 ]]; then
     echolor "${num_failed}/${tests} Tests failed" --red
+    exit 0
 	else
     echolor "${num_failed}/${tests} Tests failed" --green
+    exit 1
   fi
-
-  echo "Done"
 }
 
 run_shellcheck() {
@@ -74,34 +79,49 @@ succ_str() {
 stat_str() {
   local output=$1
   local offset='[ STATUS ]'
+  if [[ "$2" == "--nl" ]]; then echo ''; fi
   echo "$offset $1"
 }
 
-test_valid_master() {
+test_str() {
+  local num=$1
+  local name=$2
+  local offset="[ TEST $num ]"
   echo ''
-  echo "[ TEST $((++tests)) ] ${FUNCNAME[0]}"
+  echo "$offset $2"
+}
+
+test_valid_master() {
+  ((++tests)); test_str $tests "${FUNCNAME[0]}"
 
   masters=('https://dfki@192.168.0.1:11311' 'https://dfki@uos.de' \
            'https://dfki@uos.de:11311' 'https://flamara@informatik.uos.de:11311' \
            'http' 'gdgdkjl567')
   results=(0 1 0 0 1 1)
 
-  if [[ ! ${#masters[@]} -eq ${#results[@]} ]]; then add_fail; echolor 'invalid testing parameters' --red; return 1; fi
+  if [[ ! ${#masters[@]} -eq ${#results[@]} ]]; then
+    add_fail; echolor 'invalid testing parameters' --red;
+    return 1;
+  fi
 
   for i in "${!masters[@]}"
   do
     valid_master "${masters[i]}" &> /dev/null
 
-  if [[ $? -eq ${results[i]} ]]; then succ_str "$(result_to_str ${results[i]}): ${masters[i]}" 
-  else add_fail; fail_str "$(result_to_str ${results[i]}): ${masters[i]}"; fi
+  if [[ $? -eq ${results[i]} ]]; then
+    succ_str "$(result_to_str ${results[i]}): ${masters[i]}"
+  else
+    add_fail; fail_str "$(result_to_str ${results[i]}): ${masters[i]}"; fi
   done
 }
 
 test_create_rosinstall() {
   local ws="$2"
   local ws_src="${ws}/src"
+  local ws_devel="${ws}/devel"
   local test_file="$1"
   local install_file="${ws_src}/.rosinstall"
+  local setup_file="$3"
   local generated_file="${install_file}_generated"
   local shell='bash'
   local ros_version='kinetic'
@@ -111,19 +131,20 @@ test_create_rosinstall() {
     return 1
   fi
 
-  
-
-  echo ''
-  echo "[ TEST $3 ] ${FUNCNAME[0]}"
+  test_str $4 "${FUNCNAME[0]}"
 
   mkdir -p "$ws_src" &> /dev/null
+  mkdir "$ws_devel" &> /dev/null
   cp "$test_file" "$install_file"
+  cp "${setup_file}.bash" "${ws_devel}/setup.bash"
+  cp "${setup_file}.sh" "${ws_devel}/setup.sh"
   cd "$ws"
 
   stat_str "Setting up mock workspace from $test_file .."
   wstool update -t "$ws_src" &> /dev/null
 
-  source /opt/ros/"$ros_version"/setup."$shell"
+  source /opt/ros/"${ros_version}"/setup."${shell}"
+  echo '# this is a mock workspace' > "${ws}/.catkin_workspace"
 
   stat_str "Creating rosinstall .."
   cd "$ws_src" && create_rosinstall &> /dev/null
@@ -136,26 +157,28 @@ test_create_rosinstall() {
 
   if [[ ! -d "$result_dir" ]]; then mkdir "$result_dir"; fi
 
-  echo "${generated_file} to ${result_dir}/${test_file##*/}_generated"
-  cp "${generated_file}" "${result_dir}"/"${generated_file##*/}"
-  rm -rf "$ws"
+  cp "${generated_file}" "${result_dir}/${test_file##*/}"
 }
 
 test_create_rosinstalls() {
   local start_dir="$dir"
-  local ws_test_1="${start_dir}/test_ws1"
-  local ws_test_2="${start_dir}/test_ws2"
   local test_files_dir="${start_dir}/rosinstalls"
-  local test_files=("${test_files_dir}/test.rosinstall" \
-                    "${test_files_dir}/testrec.rosinstall")
+  local test_ws_files=("${test_files_dir}/test.rosinstall" \
+                       "${test_files_dir}/testrec.rosinstall")
+  local test_setup_files=("${test_files_dir}/testsetup" \
+                          "${test_files_dir}/testrecsetup")
 
-  echo ''
-  stat_str 'Creating mock catkin_workspaces to test .rosinstall generation.'
-  stat_str 'Grab a coffee, this can take a while ...'
+  stat_str 'Creating mock catkin_workspaces to test .rosinstall generation.' --nl
 
-  ((++tests)); exec 3< <(test_create_rosinstall "${test_files[0]}" "$ws_test_1" $tests) 
+  ((++tests)); exec 3< <(test_create_rosinstall "${test_ws_files[0]}" \
+                                                "${test_workspaces[0]}" \
+                                                "${test_setup_files[1]}" \
+                                                $tests)
   sleep 1
-  ((++tests)); exec 4< <(test_create_rosinstall "${test_files[1]}" "$ws_test_2" $tests)
+  ((++tests)); exec 4< <(test_create_rosinstall "${test_ws_files[1]}" \
+                                                "${test_workspaces[1]}" \
+                                                "${test_setup_files[1]}" \
+                                                $tests)
 
   output_test_1=$(cat <&3)
   if grep -q 'FAIL' "$output_test_1" &> /dev/null
@@ -173,9 +196,48 @@ test_create_rosinstalls() {
   echo "$output_test_2"
 }
 
+test_config_files() {
+  ((++tests)); test_str $tests "${FUNCNAME[0]}"
+
+  local ws_config='.workspace_config'
+  local config_dir="${HOME}/.ros_cl_tools"
+
+  for ws in "${test_workspaces[@]}"
+  do
+    cd $ws
+    ws_checker # TODO does PROMPT COMMAND behave differently?
+    stat_str "$ws $(ls -la)"
+
+    local workspace_file="${config_dir}/${PWD##*/}.ros_ws"
+
+    if [[ -f "$workspace_file" ]]; then
+      succ_str "Found workspace description file $workspace_file"
+    else
+      add_fail; fail_str "Did not find workspace description file $workspace_file"
+    fi
+
+    local abs_ws_config="${PWD}/$ws_config"
+    if [[ -f "$abs_ws_config" ]]; then
+      succ_str "Found workspace config file      $abs_ws_config"
+    else
+      add_fail; fail_str "Did not find workspace config file $abs_ws_config"
+    fi
+
+    roscd sick_tim
+    if [[ $? -eq 0 ]]; then
+      succ_str "workspace properly sourced"
+      sleep 3
+      rosnode kill -a &> /dev/null
+    else
+      add_fail; fail_str "workspace not properly sourced?"
+    fi
+  done
+}
+
 init
 
 test_valid_master
 test_create_rosinstalls
+test_config_files
 
 summary
