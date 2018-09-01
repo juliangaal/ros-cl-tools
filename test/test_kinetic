@@ -3,6 +3,6 @@
 export shell='bash'
 export ros_version='kinetic'
 
-bash tests
+time bash tests
 
 exit $?
