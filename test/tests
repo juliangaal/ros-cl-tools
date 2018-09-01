@@ -31,10 +31,8 @@ summary() {
   echo ''
   if [[ ! $num_failed -eq 0 ]]; then
     echolor "${num_failed}/${tests} Tests failed" --red
-    exit 0
 	else
     echolor "${num_failed}/${tests} Tests failed" --green
-    exit 1
   fi
 }
 
@@ -241,3 +239,5 @@ test_create_rosinstalls
 test_config_files
 
 summary
+
+if [[ ! $num_failed -eq 0 ]]; then exit 1; fi
