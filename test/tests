@@ -5,12 +5,16 @@ tests=0
 test_desc=('A' 'B' 'C' 'D')
 test_desc_index=0
 dir=$(cd "$(dirname "${BASH_SOURCE[0]}" )" && pwd)
+home="${dir%/*}"
 result_dir="${dir}/results"
 test_workspaces=("${dir}/test_ws2" "${dir}/test_ws1")
 
 init() {
-  source ../ros_cl_tools
-  stat_str "Running Tests in $dir" --nl
+  source ${home}/ros_cl_tools
+  if [[ $? -eq 1 ]]; then fail_str "Can't source script"; exit 1; fi
+
+  stat_str "Found ros_cl_tools file $ROS_CL_TOOLS" --nl
+  stat_str "Running Tests in $dir"
 
   if [[ -d "$result_dir" ]]; then
     rm -rf "${result_dir}"
@@ -244,8 +248,6 @@ test_config_files() {
     roscd &> /dev/null
     if [[ $? -eq 0 ]]; then
       succ_str "workspace properly sourced"
-      sleep 3
-      rosnode kill -a &> /dev/null
     else
       add_fail; fail_str "workspace not properly sourced?"
     fi

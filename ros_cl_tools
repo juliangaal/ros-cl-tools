@@ -423,4 +423,5 @@ ws_checker() {
 
 export PROMPT_COMMAND=ws_checker
 export ROS_CL_TOOLS_CONFIG_DIR="$HOME/.ros_cl_tools"
+export ROS_CL_TOOLS="${PWD}/ros_cl_tools"
 init
