@@ -4,13 +4,11 @@ jobs:
     docker:
       - image: ros:kinetic-ros-base
     steps:
-      - checkout
-      - run:
-	  name: Install Sudo
-          command: apt-get install -y sudo
+      - run: apt-get install -y sudo
       - run:
           name: Install Curl
           command: 'sudo apt-get install -y curl'
+      - checkout
       - run:
           name: Run Tests
           command: chmod +x test/tests && cd test && ./tests
