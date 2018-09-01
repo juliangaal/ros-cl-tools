@@ -204,7 +204,6 @@ test_config_files() {
   do
     cd $ws
     ws_checker # TODO does PROMPT COMMAND behave differently?
-    stat_str "$ws $(ls -la)"
 
     local workspace_file="${config_dir}/${PWD##*/}.ros_ws"
 
@@ -221,7 +220,7 @@ test_config_files() {
       add_fail; fail_str "Did not find workspace config file $abs_ws_config"
     fi
 
-    roscd sick_tim
+    roscd &> /dev/null
     if [[ $? -eq 0 ]]; then
       succ_str "workspace properly sourced"
       sleep 3
