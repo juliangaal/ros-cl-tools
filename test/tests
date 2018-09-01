@@ -292,7 +292,7 @@ test_config_files() {
   for ws in "${test_workspaces[@]}"
   do
     cd $ws
-    ws_checker &> /dev/null # TODO does PROMPT COMMAND behave differently?
+    ws_checker #&> /dev/null # TODO does PROMPT COMMAND behave differently?
 
     local workspace_file="${config_dir}/${PWD##*/}.ros_ws"
 
@@ -312,7 +312,7 @@ test_config_files() {
     fi
 
     ((++tests))
-    (roscd &> /dev/null)
+    (roscd) #&> /dev/null)
     if [[ $? -eq 0 ]]; then
       succ_str "workspace properly sourced"
     else
