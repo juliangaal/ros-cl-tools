@@ -127,11 +127,13 @@ test_valid_master() {
   do
     valid_master "${masters[i]}" &> /dev/null
 
-  if [[ $? -eq ${results[i]} ]]; then
-    ((++tests)); succ_str "$(result_to_str ${results[i]}): ${masters[i]}"
-  else
-    add_fail; fail_str "$(result_to_str ${results[i]}): ${masters[i]}";
-  fi
+    if [[ $? -eq ${results[i]} ]]; then
+      succ_str "$(result_to_str ${results[i]}): ${masters[i]}"
+    else
+      add_fail; fail_str "$(result_to_str ${results[i]}): ${masters[i]}";
+    fi
+
+    ((++tests))
 
   done
 }
@@ -158,6 +160,8 @@ test_create_rosinstall() {
   mkdir -p "$ws_src" &> /dev/null
   mkdir "$ws_devel" &> /dev/null
   cp "$test_file" "$install_file"
+  # setup.bash and setup.sh is needed for sourcing...remember, just a mock
+  # workspace
   cp "${setup_file}.bash" "${ws_devel}/setup.bash"
   cp "${setup_file}.sh" "${ws_devel}/setup.sh"
   cd "$ws"
