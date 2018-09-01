@@ -63,3 +63,4 @@ flags:
 
 - [ ] .rosinstall_generated
 - [ ] ~/.ros_cl_tools/config
+- [x] connect to ~/.ssh/config/.config?

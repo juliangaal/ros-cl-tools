@@ -30,6 +30,14 @@ show_create_rosinstall_usage() {
   echo "$usage"
 }
 
+
+init() {
+	local config_dir="${HOME}/.ros_cl_tools"
+	if [[ ! -d "$config_dir" ]]; then
+		mkdir "$config_dir" || echolor 'Failed to create config directory!' --red
+	fi
+}
+
 echolor() {
   color=''
   nc='\033[0m'
@@ -87,7 +95,7 @@ create_rosinstall() {
   echo "Scanning $PWD"
   echo ''
 
-  for directory in $(find -type d -printf '%d\t%P\n' | sort -r -nk1 | cut -f2);
+  for directory in $(find -type d -printf '%d\t%P\n' | sort -r -nk1 | cut -f2 | grep .git);
   do  # if submodule, git will detach head, and replace .git/ folder with .git file. Therefore -d skips submodule
     if [[ -d "$directory" ]] && [[ "${directory##*.}" == "${git_dir}" ]]; then
       ros_package="${directory%/*}"
@@ -108,7 +116,7 @@ create_rosinstall() {
   done
 
   echo ''
-  echo "Done. Created ${PWD}/${output_file} with $num_packages ROS Packages"
+  echo "Done. Created ${output_file} with $num_packages ROS Packages"
 }
 
 valid_host() {
@@ -230,7 +238,7 @@ connect_verbose() {
 
   while true; do
     read -p 'Your IP: ' ipp
-    if (! valid_ip "$ipp"); then
+    if ( ! valid_host "$ipp" ); then
       echo "Invalid IP address!"
       continue
     fi
@@ -268,7 +276,7 @@ connect() {
     return 0
   fi
 
-  ip="$(dig +short myip.opendns.com @resolver1.opendns.com)" &> /dev/null
+  ip="$(curl -s http://whatismyip.akamai.com/)" #&> /dev/null
   if [[ -z "$ip" ]]; then
     echolor 'Cannot get IP automatically' --yellow
     while true; do
@@ -293,7 +301,8 @@ connect() {
   hostname=''
   hostname_found=1
 
-  file='./.config'
+  file="${HOME}/.ssh/config"
+  if [[ ! -f "$file" ]]; then echo 'SSH Config missing'; return 1; fi
 
   while read line
   do
@@ -321,7 +330,7 @@ connect() {
 
     if [[ $host_found -eq 1 && $hostname_found -eq 1 && $user_found -eq 1 ]]; then break; fi
 
-  done < $file
+  done < "$file"
 
   if [[ $host_found -eq 1 ]]; then echolor 'Cannot find host!'; return 1; fi
   if [[ $hostname_found -eq 1 ]]; then echolor 'Cannot find user!'; return 1; fi
@@ -334,22 +343,86 @@ connect() {
   connection_status
 }
 
+save_ws() {
+	local config_dir="${HOME}/.ros_cl_tools"
+  local workspace_file="${config_dir}/${PWD##*/}.ros_ws"
+  local workspace_exists=1
+
+  if [[ ! -f "$workspace_file" ]]; then
+    {
+      echo "local_name: ${PWD##*/}"
+      echo "location: ${PWD}"
+    } > "$workspace_file"
+  fi
+}
+
+# TODO get default values from config file
 source_ws() {
-  version='kinetic'
-  shell='bash'
-  local catkin_file='.catkin_workspace'
-  local worspaces_file='.ros_workspaces'
+  local default_version='kinetic'
+  local default_shell='bash'
+  local ros=''
+  local ws=''
+
+  if [[ $# -gt 2 ]]; then
+    return 0
+  fi
+
+  if [[ "$1" == '--create' ]]; then
+    {
+      echo "ros_version: $default_version"
+      echo "shell: $default_shell"
+    } > "${PWD}/$2"
+    ros="/opt/ros/${default_version}/setup.${default_shell}"
+    ws="devel/setup.${default_shell}"
+  fi
+
+  if [[ "$1" == '--from' ]]; then
+    local line_num=0
+    local version=''
+    local shell=''
+    while read line
+    do
+      property="${line##* }"
+      if [[ $line_num -eq 0 ]]; then version="$property";   fi
+      if [[ $line_num -eq 1 ]]; then shell="$property"; fi
+      ((++line_num))
+    done < "${PWD}/$2"
+
+    ros="/opt/ros/${version}/setup.${shell}"
+    ws="devel/setup.${shell}"
+  fi
+
+  if [[ $# -eq 0 ]]; then
+    ros="/opt/ros/${default_version}/setup.${default_shell}"
+    ws="devel/setup.${default_shell}"
+  fi
+
+	source "$ros"
+  source "$ws"
+}
+
+ws_checker() {
+	local catkin_file='.catkin_workspace'
+  local config='.workspace_config'
 
   if [[ ! -f "$catkin_file" ]]; then
     return 0
   fi
 
-  if [[ "$PWD" == '/home/chitt/julian/reground_workspace' ]]; then
-    ros=/opt/ros/${version}/setup.${shell}
-    ws=devel/setup.${shell}
-    source "$ros"
-    source "$ws"
+  local catkin_file='.catkin_workspace'
+
+	if [[ -f "$catkin_file" ]] && [[ -f "$config" ]]; then
+		source_ws --from "$config"
+		save_ws
+  elif [[ -f "$catkin_file" ]]; then
+    source_ws --create "$config"
+    save_ws
+  else
+    :
   fi
 }
 
-export PROMPT_COMMAND=source_ws
+export PROMPT_COMMAND=ws_checker
+export ROS_CL_TOOLS_CONFIG_DIR="$HOME/.ros_cl_tools"
+export ROS_CL_TOOLS="${PWD}/ros_cl_tools"
+init
