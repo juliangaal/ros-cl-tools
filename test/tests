@@ -9,15 +9,13 @@ home="${dir%/*}"
 result_dir="${dir}/results"
 test_files_dir="${dir}/config_files"
 test_workspaces=("${dir}/test_ws2" "${dir}/test_ws1")
-shell='bash'
-ros_version='kinetic'
 
 init() {
   source ${home}/ros_cl_tools
   if [[ $? -eq 1 ]]; then fail_str "Can't source script"; exit 1; fi
 
   stat_str "Found ros_cl_tools file $ROS_CL_TOOLS" --nl
-  stat_str "Running Tests in $dir"
+  stat_str "Running Tests in $dir. Config: $ros_version $shell"
 
   if [[ -d "$result_dir" ]]; then
     rm -rf "${result_dir}"
