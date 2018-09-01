@@ -7,7 +7,10 @@ test_desc_index=0
 dir=$(cd "$(dirname "${BASH_SOURCE[0]}" )" && pwd)
 home="${dir%/*}"
 result_dir="${dir}/results"
+test_files_dir="${dir}/config_files"
 test_workspaces=("${dir}/test_ws2" "${dir}/test_ws1")
+shell='bash'
+ros_version='kinetic'
 
 init() {
   source ${home}/ros_cl_tools
@@ -22,6 +25,8 @@ init() {
 	else
 		mkdir "$result_dir"
 	fi
+
+  source /opt/ros/"$ros_version"/setup."$shell"
 }
 
 add_fail() {
@@ -110,6 +115,65 @@ summ_str() {
   echo "$astrin"
 }
 
+test_connect_v() {
+  test_str "${FUNCNAME[0]}"
+
+  local ros_ip_goal="192.168.0.1"
+  local master_uri_goal="https://user@name.de:11311"
+
+# here documents appear to have to be at the beginning of line ONLY
+{
+connect -v <<ANSWERS
+$ros_ip_goal
+$master_uri_goal
+ANSWERS
+} &> /dev/null
+
+  test_connect_result "$ros_ip_goal" "$master_uri_goal"
+}
+
+test_connect() {
+  test_str "${FUNCNAME[0]}"
+  local ssh_config_file="${test_files_dir}/ssh.config"
+  local ssh_dir="${HOME}/.ssh"
+  local target="${ssh_dir}/config"
+  local ros_ip_goal="$(curl -s http://whatismyip.akamai.com/)"
+  local master_uri_goal="https://fooey@dev.example.com:11311"
+
+  if [[ ! -d "${ssh_dir}" ]]; then mkdir "$ssh_dir"; fi
+  cp "$ssh_config_file" "$target" &> /dev/null
+
+  connect dev &> /dev/null
+
+  test_connect_result "$ros_ip_goal" "$master_uri_goal"
+}
+
+test_connect_result() {
+  local ros_ip_goal="$1"
+  local master_uri_goal="$2"
+
+  ((++tests))
+  if [[ "$ROS_MASTER_URI" == "$master_uri_goal" ]]; then
+    succ_str "Set correct Master Uri: $ROS_MASTER_URI"
+  else
+    add_fail; fail_str "Couldn't set correct Master Uri: $ROS_MASTER_URI"
+  fi
+
+  ((++tests))
+  if [[ "$ROS_IP" == "$ros_ip_goal" ]]; then
+    succ_str "Set correct ROS ip: $ROS_IP"
+  else
+    add_fail; fail_str "Couldn't set correct ROS ip: $ROS_IP"
+  fi
+
+  ((++tests))
+  if [[ "$ROS_HOSTNAME" == "$ros_ip_goal" ]]; then
+    succ_str "Set correct Hostname: $ROS_HOSTNAME"
+  else
+    add_fail; fail_str "Couldn't set correct Hostname: $ROS_HOSTNAME"
+  fi
+}
+
 test_valid_master() {
   test_str "${FUNCNAME[0]}"
 
@@ -190,7 +254,6 @@ test_create_rosinstall() {
 
 test_create_rosinstalls() {
   local start_dir="$dir"
-  local test_files_dir="${start_dir}/rosinstalls"
   local test_ws_files=("${test_files_dir}/test.rosinstall" \
                        "${test_files_dir}/testrec.rosinstall")
   local test_setup_files=("${test_files_dir}/testsetup" \
@@ -249,7 +312,7 @@ test_config_files() {
     fi
 
     ((++tests))
-    roscd &> /dev/null
+    (roscd &> /dev/null)
     if [[ $? -eq 0 ]]; then
       succ_str "workspace properly sourced"
     else
@@ -260,6 +323,8 @@ test_config_files() {
 
 init
 
+test_connect_v
+test_connect
 test_valid_master
 test_create_rosinstalls
 test_config_files
