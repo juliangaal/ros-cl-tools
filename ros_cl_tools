@@ -238,7 +238,7 @@ connect_verbose() {
 
   while true; do
     read -p 'Your IP: ' ipp
-    if (! valid_ip "$ipp"); then
+    if ( ! valid_host "$ipp" ); then
       echo "Invalid IP address!"
       continue
     fi
@@ -276,7 +276,7 @@ connect() {
     return 0
   fi
 
-  ip="$(dig +short myip.opendns.com @resolver1.opendns.com)" &> /dev/null
+  ip="$(curl -s http://whatismyip.akamai.com/)" #&> /dev/null
   if [[ -z "$ip" ]]; then
     echolor 'Cannot get IP automatically' --yellow
     while true; do
@@ -301,7 +301,8 @@ connect() {
   hostname=''
   hostname_found=1
 
-  file='./.config'
+  file="${HOME}/.ssh/config"
+  if [[ ! -f "$file" ]]; then echo 'SSH Config missing'; return 1; fi
 
   while read line
   do
