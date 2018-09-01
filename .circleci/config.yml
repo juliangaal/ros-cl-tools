@@ -6,8 +6,8 @@ jobs:
     steps:
       - checkout
       - run:
-        - name: Install Curl
-        - command: 'sudo apt-get update; sudo apt-get install curl'
+          name: Install Curl
+          command: 'sudo apt-get update; sudo apt-get install curl'
       -run:
-        - name: Run Tests
-        - command: chmod +x test/tests && cd test && ./tests
+          name: Run Tests
+          command: chmod +x test/tests && cd test && ./tests
