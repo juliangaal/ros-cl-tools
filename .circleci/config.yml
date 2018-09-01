@@ -24,7 +24,9 @@ jobs:
       - checkout
       - run:
           name: Install Dependencies
-          command: chmod +x install/install_env.bash && ./install/install_env.bash
+          command: |
+          chmod +x test/install/install_env.bash
+          ./test/install/install_env.bash
       - run:
           name: Run Tests
           command: chmod +x test/tests && cd test && ./tests
