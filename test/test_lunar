@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+
+export shell='bash'
+export ros_version='lunar'
+
+bash tests
+
+exit $?
