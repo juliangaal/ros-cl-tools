@@ -1,6 +1,23 @@
 version: 2
 jobs:
-  test:
+  indigo:
+    docker:
+      - image: ros:indigo-ros-base
+    steps:
+      - run:
+          name: Package Cache
+          command: apt-get update -y
+      - run:
+          name: Install sudo
+          command: apt-get install -y sudo
+      - run:
+          name: Install Curl
+          command: sudo apt-get install -y curl
+      - checkout
+      - run:
+          name: Run Tests
+          command: chmod +x test/tests && cd test && ./tests
+  kinetic:
     docker:
       - image: ros:kinetic-ros-base
     steps:
@@ -12,7 +29,24 @@ jobs:
           command: apt-get install -y sudo
       - run:
           name: Install Curl
-          command: 'sudo apt-get install -y curl'
+          command: sudo apt-get install -y curl
+      - checkout
+      - run:
+          name: Run Tests
+          command: chmod +x test/tests && cd test && ./tests
+  kinetic:
+    docker:
+      - image: ros:melodic-ros-base
+    steps:
+      - run:
+          name: Package Cache
+          command: apt-get update -y
+      - run:
+          name: Install sudo
+          command: apt-get install -y sudo
+      - run:
+          name: Install Curl
+          command: sudo apt-get install -y curl
       - checkout
       - run:
           name: Run Tests
@@ -22,4 +56,6 @@ workflows:
   version: 2
   build_and_test:
     jobs:
-      - test
+      - indigo
+      - kinetic
+      - melodic
