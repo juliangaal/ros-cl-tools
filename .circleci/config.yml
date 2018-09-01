@@ -2,7 +2,7 @@ version: 2
 jobs:
   test:
     docker:
-      - image: juj
+      - image: ros:kinetic-ros-base
     steps:
       - run:
           name: Package Cache
@@ -12,7 +12,7 @@ jobs:
           command: apt-get install -y sudo
       - run:
           name: Install Curl
-          command: sudo apt-get install -y curl
+          command: 'sudo apt-get install -y curl'
       - checkout
       - run:
           name: Run Tests
