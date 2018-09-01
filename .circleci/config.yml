@@ -21,10 +21,10 @@ jobs:
     docker:
       - image: ros:kinetic-ros-base
     steps:
+      - checkout
       - run:
           name: Install Dependencies
           command: chmod +x install/install_env.bash && ./install/install_env.bash
-      - checkout
       - run:
           name: Run Tests
           command: chmod +x test/tests && cd test && ./tests
