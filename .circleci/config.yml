@@ -5,4 +5,9 @@ jobs:
       - image: ros:kinetic-ros-base
     steps:
       - checkout
-      - run: chmod +x test/tests && cd test && ./tests
+      - run:
+        - name: Install Curl
+        - command: 'sudo apt-get update; sudo apt-get install curl'
+      -run:
+        - name: Run Tests
+        - command: chmod +x test/tests && cd test && ./tests
