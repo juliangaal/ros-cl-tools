@@ -6,8 +6,11 @@ jobs:
     steps:
       - checkout
       - run:
+	  name: Install Sudo
+          command: apt-get install -y sudo
+      - run:
           name: Install Curl
-          command: 'sudo apt-get install curl'
+          command: 'sudo apt-get install -y curl'
       - run:
           name: Run Tests
           command: chmod +x test/tests && cd test && ./tests
