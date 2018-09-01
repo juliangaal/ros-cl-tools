@@ -2,13 +2,15 @@
 
 num_failed=0
 tests=0
+test_desc=('A' 'B' 'C' 'D')
+test_desc_index=0
 dir=$(cd "$(dirname "${BASH_SOURCE[0]}" )" && pwd)
 result_dir="${dir}/results"
 test_workspaces=("${dir}/test_ws2" "${dir}/test_ws1")
 
 init() {
   source ../ros_cl_tools
-  echo "Running Tests in $dir"
+  stat_str "Running Tests in $dir" --nl
 
   if [[ -d "$result_dir" ]]; then
     rm -rf "${result_dir}"
@@ -28,12 +30,15 @@ summary() {
     rm -rf "$ws"
   done
 
-  echo ''
+  summ_str ''
+
   if [[ ! $num_failed -eq 0 ]]; then
-    echolor "${num_failed}/${tests} Tests failed" --red
+    fail_str "${num_failed}/${tests} Tests failed" --nl
 	else
-    echolor "${num_failed}/${tests} Tests failed" --green
+    succ_str "${num_failed}/${tests} Tests failed" --nl
   fi
+
+  echo ''
 }
 
 run_shellcheck() {
@@ -82,15 +87,27 @@ stat_str() {
 }
 
 test_str() {
-  local num=$1
-  local name=$2
-  local offset="[ TEST $num ]"
+  local str=$1
+  local offset='|  TEST  |'
+  local astrin='----------'
   echo ''
-  echo "$offset $2"
+  echo "$astrin"
+  echo "$offset ${str^^}"
+  echo "$astrin"
+}
+
+summ_str() {
+  local str=$1
+  local offset='| RESULT |'
+  local astrin='----------'
+  echo ''
+  echo "$astrin"
+  echo "$offset ${str}"
+  echo "$astrin"
 }
 
 test_valid_master() {
-  ((++tests)); test_str $tests "${FUNCNAME[0]}"
+  test_str "${FUNCNAME[0]}"
 
   masters=('https://dfki@192.168.0.1:11311' 'https://dfki@uos.de' \
            'https://dfki@uos.de:11311' 'https://flamara@informatik.uos.de:11311' \
@@ -107,9 +124,11 @@ test_valid_master() {
     valid_master "${masters[i]}" &> /dev/null
 
   if [[ $? -eq ${results[i]} ]]; then
-    succ_str "$(result_to_str ${results[i]}): ${masters[i]}"
+    ((++tests)); succ_str "$(result_to_str ${results[i]}): ${masters[i]}"
   else
-    add_fail; fail_str "$(result_to_str ${results[i]}): ${masters[i]}"; fi
+    add_fail; fail_str "$(result_to_str ${results[i]}): ${masters[i]}";
+  fi
+
   done
 }
 
@@ -122,6 +141,7 @@ test_create_rosinstall() {
   local setup_file="$3"
   local generated_file="${install_file}_generated"
   local shell='bash'
+  local status=1
   local ros_version='kinetic'
 
   if [[ ! -f "$test_file" ]]; then
@@ -129,7 +149,7 @@ test_create_rosinstall() {
     return 1
   fi
 
-  test_str $4 "${FUNCNAME[0]}"
+  test_str "${FUNCNAME[0]}"
 
   mkdir -p "$ws_src" &> /dev/null
   mkdir "$ws_devel" &> /dev/null
@@ -148,14 +168,16 @@ test_create_rosinstall() {
   cd "$ws_src" && create_rosinstall &> /dev/null
 
   if $(diff .rosinstall .rosinstall_generated &> /dev/null); then
+    status=0
     succ_str "rosinstall generation successful"
   else
-    add_fail; fail_str "rosinstall generation unsuccessful"
+    status=1; fail_str "rosinstall generation unsuccessful"
   fi
 
   if [[ ! -d "$result_dir" ]]; then mkdir "$result_dir"; fi
-
   cp "${generated_file}" "${result_dir}/${test_file##*/}"
+
+  return $status
 }
 
 test_create_rosinstalls() {
@@ -168,34 +190,30 @@ test_create_rosinstalls() {
 
   stat_str 'Creating mock catkin_workspaces to test .rosinstall generation.' --nl
 
-  ((++tests)); exec 3< <(test_create_rosinstall "${test_ws_files[0]}" \
-                                                "${test_workspaces[0]}" \
-                                                "${test_setup_files[1]}" \
-                                                $tests)
+  ((++tests)); ((test_desc_index++))
+  exec 3< <(test_create_rosinstall "${test_ws_files[0]}" \
+                                   "${test_workspaces[0]}" \
+                                   "${test_setup_files[1]}")
   sleep 1
-  ((++tests)); exec 4< <(test_create_rosinstall "${test_ws_files[1]}" \
-                                                "${test_workspaces[1]}" \
-                                                "${test_setup_files[1]}" \
-                                                $tests)
+  ((++tests)); ((test_desc_index++))
+  exec 4< <(test_create_rosinstall "${test_ws_files[1]}" \
+                                   "${test_workspaces[1]}" \
+                                   "${test_setup_files[1]}")
 
   output_test_1=$(cat <&3)
-  if grep -q 'FAIL' "$output_test_1" &> /dev/null
-  then
-    add_fail
-  fi
+  echo "$output_test_1" | grep 'FAIL' &> /dev/null
+  if [[ $? -eq 0 ]]; then add_fail; fi
 
   output_test_2=$(cat <&4)
-  if grep -q 'FAIL' "$output_test_2" &> /dev/null
-  then
-    add_fail
-  fi
+  echo "$output_test_2" | grep 'FAIL' &> /dev/null
+  if [[ $? -eq 0 ]]; then add_fail; fi
 
   echo "$output_test_1"
   echo "$output_test_2"
 }
 
 test_config_files() {
-  ((++tests)); test_str $tests "${FUNCNAME[0]}"
+  test_str "${FUNCNAME[0]}"
 
   local ws_config='.workspace_config'
   local config_dir="${HOME}/.ros_cl_tools"
@@ -203,16 +221,18 @@ test_config_files() {
   for ws in "${test_workspaces[@]}"
   do
     cd $ws
-    ws_checker # TODO does PROMPT COMMAND behave differently?
+    ws_checker &> /dev/null # TODO does PROMPT COMMAND behave differently?
 
     local workspace_file="${config_dir}/${PWD##*/}.ros_ws"
 
+    ((++tests))
     if [[ -f "$workspace_file" ]]; then
       succ_str "Found workspace description file $workspace_file"
     else
       add_fail; fail_str "Did not find workspace description file $workspace_file"
     fi
 
+    ((++tests))
     local abs_ws_config="${PWD}/$ws_config"
     if [[ -f "$abs_ws_config" ]]; then
       succ_str "Found workspace config file      $abs_ws_config"
@@ -220,6 +240,7 @@ test_config_files() {
       add_fail; fail_str "Did not find workspace config file $abs_ws_config"
     fi
 
+    ((++tests))
     roscd &> /dev/null
     if [[ $? -eq 0 ]]; then
       succ_str "workspace properly sourced"

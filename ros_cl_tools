@@ -95,7 +95,7 @@ create_rosinstall() {
   echo "Scanning $PWD"
   echo ''
 
-  for directory in $(find -type d -printf '%d\t%P\n' | sort -r -nk1 | cut -f2);
+  for directory in $(find -type d -printf '%d\t%P\n' | sort -r -nk1 | cut -f2 | grep .git);
   do  # if submodule, git will detach head, and replace .git/ folder with .git file. Therefore -d skips submodule
     if [[ -d "$directory" ]] && [[ "${directory##*.}" == "${git_dir}" ]]; then
       ros_package="${directory%/*}"
@@ -116,7 +116,7 @@ create_rosinstall() {
   done
 
   echo ''
-  echo "Done. Created ${PWD}/${output_file} with $num_packages ROS Packages"
+  echo "Done. Created ${output_file} with $num_packages ROS Packages"
 }
 
 valid_host() {
