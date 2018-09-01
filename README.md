@@ -29,3 +29,7 @@ arguments:
 flags:
   -h, --help  show help text"
 ```
+
+## TODO
+- [ ] connect to ~/.ssh/config/.config?
+- [ ] look at bats
