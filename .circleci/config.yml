@@ -4,19 +4,18 @@ jobs:
     docker:
       - image: ros:indigo-ros-base
     steps:
-      - run:
-          name: Package Cache
-          command: apt-get update -y
-      - run:
-          name: Install sudo
-          command: apt-get install -y sudo
-      - run:
-          name: Install Curl
-          command: sudo apt-get install -y curl
       - checkout
       - run:
+          name: Install Dependencies
+          command: |
+            chmod +x test/install/install_env.bash
+            ./test/install/install_env.bash
+      - run:
           name: Run Tests
-          command: chmod +x test/tests && cd test && ./tests
+          command: |
+            chmod +x test/tests
+            chmod +x test/test_indigo
+            cd test && ./tests
   kinetic:
     docker:
       - image: ros:kinetic-ros-base
@@ -29,21 +28,21 @@ jobs:
             ./test/install/install_env.bash
       - run:
           name: Run Tests
-          command: chmod +x test/tests && cd test && ./tests
+          command: |
+            chmod +x test/tests
+            chmod +x test/test_kinetic
+            cd test && ./tests
   melodic:
     docker:
       - image: ros:melodic-ros-base
     steps:
-      - run:
-          name: Package Cache
-          command: apt-get update -y
-      - run:
-          name: Install sudo
-          command: apt-get install -y sudo
-      - run:
-          name: Install Curl
-          command: sudo apt-get install -y curl
       - checkout
+      - run:
+          name: Install Dependencies
+          command: |
+            chmod +x test/tests
+            chmod +x test/test_melodic 
+            cd test && ./tests
       - run:
           name: Run Tests
           command: chmod +x test/tests && cd test && ./tests
