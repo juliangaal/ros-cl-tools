@@ -15,7 +15,7 @@ jobs:
           command: |
             chmod +x test/tests
             chmod +x test/test_indigo
-            cd test && ./tests
+            cd test && ./test_indigo
   kinetic:
     docker:
       - image: ros:kinetic-ros-base
@@ -31,7 +31,7 @@ jobs:
           command: |
             chmod +x test/tests
             chmod +x test/test_kinetic
-            cd test && ./tests
+            cd test && ./test_kinetic
   melodic:
     docker:
       - image: ros:melodic-ros-base
@@ -41,8 +41,8 @@ jobs:
           name: Install Dependencies
           command: |
             chmod +x test/tests
-            chmod +x test/test_melodic 
-            cd test && ./tests
+            chmod +x test/test_melodic
+            cd test && ./test_melodic
       - run:
           name: Run Tests
           command: chmod +x test/tests && cd test && ./tests
