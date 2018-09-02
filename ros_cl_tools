@@ -212,21 +212,27 @@ valid_master() {
 }
 
 status() {
-  echo "ROS IP: $ROS_IP"
-  echo "ROS Hostname: $ROS_HOSTNAME"
+  if [[ ! -z "$ROS_IP" ]]; then echo "ROS IP: $ROS_IP"; fi
+  if [[ ! -z "$ROS_HOSTNAME" ]]; then echo "ROS Hostname: $ROS_HOSTNAME"; fi
   echo "ROS Master URI: $ROS_MASTER_URI"
 }
 
 connection_status() {
   echo '---'
   hostname="${ROS_MASTER_URI#*/}"
-  ping -q -c3 "${hostname}" &> /dev/null
-  if [ $? -eq 0 ]; then
+
+  if [[ "$ROS_MASTER_URI" == 'http://localhost:11311' ]]; then
     status='Connected'
     echolor "ROS Connection Status: $status" --green
   else
-    status='Failed'
-    echolor "ROS Connection Status: $status" --red
+    ping -q -c3 "${hostname}" &> /dev/null
+    if [[ $? -eq 0 ]]; then
+      status='Connected'
+      echolor "ROS Connection Status: $status" --green
+    else
+      status='Failed'
+      echolor "ROS Connection Status: $status" --red
+    fi
   fi
 
   status
