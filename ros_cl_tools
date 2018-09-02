@@ -50,7 +50,7 @@ echolor() {
     color='\033[0;31m'
   fi
 
-  echo -e "${color}${1}${nc}"
+  echo -e "${color}[ros_cl_tools] ${1}${nc}"
 }
 
 external_ip() {
@@ -410,12 +410,19 @@ source_ws() {
 ws_checker() {
 	local catkin_file='.catkin_workspace'
   local config='.workspace_config'
+  local global_config="${ROS_CL_TOOLS_CONFIG_DIR}/config"
 
   if [[ ! -f "$catkin_file" ]]; then
     return 0
   fi
 
   local catkin_file='.catkin_workspace'
+
+  if [[ ! -f "$global_config" ]]; then
+    echolor "No global config file found. Pls do so in $global_config" --red
+    echolor "Workspace not sourced"
+    return 1
+  fi
 
 	if [[ -f "$catkin_file" ]] && [[ -f "$config" ]]; then
 		source_ws --from "$config"
