@@ -50,7 +50,11 @@ echolor() {
     color='\033[0;31m'
   fi
 
-  echo -e "${color}[ros_cl_tools] ${1}${nc}"
+  if [[ "$3" == '--test' ]]; then
+    echo -e "${color}[ros_cl_tools] ${1}${nc}"
+  else
+    echo -e "${color}${1}${nc}"
+  fi
 }
 
 external_ip() {

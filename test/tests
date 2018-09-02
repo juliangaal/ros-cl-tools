@@ -76,14 +76,14 @@ fail_str() {
   local output=$1
   local fail_str='[  FAIL  ]'
 
-  echolor "$fail_str $output" --red
+  echolor "$fail_str $output" --red --test
 }
 
 succ_str() {
   local output=$1
   local succ_str='[   OK   ]'
 
-  echolor "$succ_str $output" --green
+  echolor "$succ_str $output" --green --test
 }
 
 stat_str() {
@@ -181,7 +181,7 @@ test_valid_master() {
   results=(0 1 0 0 1 1)
 
   if [[ ! ${#masters[@]} -eq ${#results[@]} ]]; then
-    add_fail; echolor 'invalid testing parameters' --red;
+    add_fail; echolor 'invalid testing parameters' --red --test;
     return 1;
   fi
 
@@ -213,7 +213,7 @@ test_create_rosinstall() {
   local ros_version='kinetic'
 
   if [[ ! -f "$test_file" ]]; then
-    echolor "Workspace test file $test_file doesn't exist" --red
+    echolor "Workspace test file $test_file doesn't exist" --red --test
     return 1
   fi
 
@@ -286,6 +286,9 @@ test_config_files() {
 
   local ws_config='.workspace_config'
   local config_dir="${HOME}/.ros_cl_tools"
+
+  # mock config file
+  echo '#this is a mock file' > "${config_dir}/config"
 
   for ws in "${test_workspaces[@]}"
   do
