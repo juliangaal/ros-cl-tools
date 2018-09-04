@@ -406,7 +406,7 @@ source_ws() {
     ros="/opt/ros/${default_version}/setup.${default_shell}"
     ws="devel/setup.${default_shell}"
   fi
-
+	
 	source "$ros"
   source "$ws"
 }
@@ -419,8 +419,6 @@ ws_checker() {
   if [[ ! -f "$catkin_file" ]]; then
     return 0
   fi
-
-  local catkin_file='.catkin_workspace'
 
   if [[ ! -f "$global_config" ]]; then
     echolor "No global config file found. Pls do so in $global_config" --red
@@ -439,7 +437,16 @@ ws_checker() {
   fi
 }
 
-export PROMPT_COMMAND=ws_checker
+# support zsh and bash for running command on every call
+# taken from: https://superuser.com/a/822195
+# ZSH_VERSION is only known to zsh
+[ ${ZSH_VERSION} ] && precmd() { ws_checker; }
+
+# 'BASH_VERSION' only defined in Bash
+[ ${BASH_VERSION} ] && export PROMPT_COMMAND=ws_checker
+
 export ROS_CL_TOOLS_CONFIG_DIR="$HOME/.ros_cl_tools"
 export ROS_CL_TOOLS="${PWD}/ros_cl_tools"
 init
+
+
