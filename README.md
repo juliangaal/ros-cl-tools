@@ -25,7 +25,7 @@ ros_version: <YOUR_VERSION>
 shell: <YOUR_SHELL>
 ```
 
-If you leave this file empty, it will be generated from the defaults in `~/.ros_cl_tools/config`
+If you leave this file empty, it will be generated from the defaults in `~/.ros_cl_tools/config`. If that files doesn't exist, the ros_version will be set to highest in your system, and the shell will be set to your current shell
 
 ### Connect to 
 
