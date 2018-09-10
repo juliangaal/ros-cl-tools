@@ -240,7 +240,6 @@ test_create_rosinstall() {
   local generated_file="${install_file}_generated"
   local shell='bash'
   local status=1
-  local ros_version='kinetic'
 
   if [[ ! -f "$test_file" ]]; then
     echolor "Workspace test file $test_file doesn't exist" --red --test
