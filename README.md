@@ -29,7 +29,7 @@ If you leave this file empty, it will be generated from the defaults in `~/.ros_
 
 ### Connect to 
 
-Function 'connect'
+Function *connect*
 
 ```
 Connect to ROS Master
@@ -45,7 +45,7 @@ flags:
 
 ### Create .rosinstall from existing catkin_workspace
 
-Function 'create_rosinstall'
+Function *create_rosinstall*
 
 ```
 Create .rosinstall file for wstool from existing catkin workspace
