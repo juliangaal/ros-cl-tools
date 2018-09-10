@@ -1,6 +1,4 @@
-# ros_cl_tools - ROS Command Line Tools
-
-[![CircleCI](https://circleci.com/gh/juliangaal/ros_cl_tools.svg?style=svg)](https://circleci.com/gh/juliangaal/ros_cl_tools)
+# ros-cl-tools: ROS Command Line Tools [![CircleCI](https://circleci.com/gh/juliangaal/ros-cl-tools.svg?style=svg)](https://circleci.com/gh/juliangaal/ros-cl-tools)
 
 ROS Command Line Tools are a collection of helper function that make your life easier while developing with ROS
 
@@ -27,11 +25,11 @@ ros_version: <YOUR_VERSION>
 shell: <YOUR_SHELL>
 ```
 
-If you leave this file empty, it will be generated from the defaults in `~/.ros_cl_tools/config`
+If you leave this file empty, it will be generated from the defaults in `~/.ros_cl_tools/config`. If that files doesn't exist, the ros_version will be set to highest in your system, and the shell will be set to your current shell
 
 ### Connect to 
 
-Function 'connect'
+Function *connect*
 
 ```
 Connect to ROS Master
@@ -47,7 +45,7 @@ flags:
 
 ### Create .rosinstall from existing catkin_workspace
 
-Function 'create_rosinstall'
+Function *create_rosinstall*
 
 ```
 Create .rosinstall file for wstool from existing catkin workspace
