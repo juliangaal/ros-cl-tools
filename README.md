@@ -1,4 +1,4 @@
-# ros_cl_tools - ROS Command Line Tools [![CircleCI](https://circleci.com/gh/juliangaal/ros_cl_tools.svg?style=svg)](https://circleci.com/gh/juliangaal/ros-cl-tools)
+# ros-cl-tools - ROS Command Line Tools [![CircleCI](https://circleci.com/gh/juliangaal/ros_cl_tools.svg?style=svg)](https://circleci.com/gh/juliangaal/ros-cl-tools)
 
 ROS Command Line Tools are a collection of helper function that make your life easier while developing with ROS
 
