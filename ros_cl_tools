@@ -53,12 +53,54 @@ echolor() {
   if [[ "$3" == '--test' ]]; then
     echo -e "${color}[ros_cl_tools] ${1}${nc}"
   else
-    echo -e "${color}${1}${nc}"
+    echo -e "${color} ${1}${nc}"
   fi
 }
 
 external_ip() {
   return "${dig +short myip.opendns.com @resolver1.opendns.com}"
+}
+
+get_current_shell() {
+ if [[ ${ZSH_VERSION} ]]; then echo 'zsh'; return 0; fi
+
+ if [[ ${BASH_VERSION} ]]; then echo 'bash'; return 0; fi
+
+ return 1
+}
+
+get_current_ros_version() {
+  ros_dir='/opt/ros'
+  indigo_dir="${ros_dir}/indigo"
+  jade_dir="${ros_dir}/jade"
+  kinetic_dir="${ros_dir}/kinetic"
+  lunar_dir="${ros_dir}/lunar"
+  melodic_dir="${ros_dir}/melodic"
+
+  if [[ -d "$melodic_dir" ]]; then
+    echo "${melodic_dir##*/}"
+    return 0
+  fi
+
+  if [[ -d "$lunar_dir" ]]; then
+    echo "${lunar_dir##*/}"
+    return 0
+  fi
+
+  if [[ -d "$kinetic_dir" ]]; then
+    echo "${kinetic_dir##*/}"
+    return 0
+  fi
+
+  if [[ -d "$jade_dir" ]]; then
+    echo "${jade_dir##*/}"
+    return 0
+  fi
+
+  if [[ -d "$indigo_dir" ]]; then
+    echo "${indigo_dir##*/}"
+    return 0
+  fi
 }
 
 create_rosinstall() {
@@ -370,6 +412,7 @@ save_ws() {
 source_ws() {
   local default_version='kinetic'
   local default_shell='bash'
+
   local ros=''
   local ws=''
 
@@ -378,6 +421,12 @@ source_ws() {
   fi
 
   if [[ "$1" == '--create' ]]; then
+    local current_shell=$(get_current_shell)
+    local current_ros_version=$(get_current_ros_version)
+
+    if [[ "$current_shell" != "$default_shell" ]]; then default_shell="$current_shell"; fi
+    if [[ "$current_ros_version" != "default_version" ]]; then default_version="$current_ros_version"; fi
+
     {
       echo "ros_version: $default_version"
       echo "shell: $default_shell"
@@ -414,7 +463,7 @@ source_ws() {
 ws_checker() {
 	local catkin_file='.catkin_workspace'
   local config='.workspace_config'
-  local global_config="${ROS_CL_TOOLS_CONFIG_DIR}/config"
+  local global_config="${ros_cl_tools_CONFIG_DIR}/config"
 
   if [[ ! -f "$catkin_file" ]]; then
     return 0
@@ -445,8 +494,8 @@ ws_checker() {
 # 'BASH_VERSION' only defined in Bash
 [ ${BASH_VERSION} ] && export PROMPT_COMMAND=ws_checker
 
-export ROS_CL_TOOLS_CONFIG_DIR="$HOME/.ros_cl_tools"
-export ROS_CL_TOOLS="${PWD}/ros_cl_tools"
+export ros_cl_tools_CONFIG_DIR="$HOME/.ros_cl_tools"
+export ros_cl_tools="${PWD}/ros_cl_tools"
 init
 
 

@@ -14,7 +14,7 @@ init() {
   source ${home}/ros_cl_tools
   if [[ $? -eq 1 ]]; then fail_str "Can't source script"; exit 1; fi
 
-  stat_str "Found ros_cl_tools file $ROS_CL_TOOLS" --nl
+  stat_str "Found ros_cl_tools file $ros_cl_tools" --nl
   stat_str "Running Tests in $dir. Config: $ros_version $shell"
 
   if [[ -d "$result_dir" ]]; then
@@ -73,6 +73,8 @@ result_to_str() {
 }
 
 fail_str() {
+  add_fail
+
   local output=$1
   local fail_str='[  FAIL  ]'
 
@@ -88,7 +90,7 @@ succ_str() {
 
 stat_str() {
   local output=$1
-  local offset='[ STATUS ]'
+  local offset='[ros_cl_tools] [ STATUS ]'
   if [[ "$2" == "--nl" ]]; then echo ''; fi
   echo "$offset $1"
 }
@@ -111,6 +113,34 @@ summ_str() {
   echo "$astrin"
   echo "$offset ${str}"
   echo "$astrin"
+}
+
+test_shell() {
+  test_str "${FUNCNAME[0]}"
+
+  ((++tests))
+
+  if [[ $(get_current_shell) == 'zsh' ]]; then 
+    succ_str 'Shell detected: zsh'
+  fi
+
+  if [[ $(get_current_shell) == 'bash' ]]; then
+    succ_str 'Shell detected: bash'
+  fi 
+
+  return 0;
+}
+
+test_get_ros_version() {
+  test_str "${FUNCNAME[0]}"
+
+  ((++tests))
+
+  if [[ $(get_current_ros_version) != "$ros_version" ]]; then
+    fail_str "Failed to detect correct ROS Version"
+  else
+    succ_str "ROS Version detected successfully: $ros_version"
+  fi
 }
 
 test_connect_v() {
@@ -154,21 +184,21 @@ test_connect_result() {
   if [[ "$ROS_MASTER_URI" == "$master_uri_goal" ]]; then
     succ_str "Set correct Master Uri: $ROS_MASTER_URI"
   else
-    add_fail; fail_str "Couldn't set correct Master Uri: $ROS_MASTER_URI"
+    fail_str "Couldn't set correct Master Uri: $ROS_MASTER_URI"
   fi
 
   ((++tests))
   if [[ "$ROS_IP" == "$ros_ip_goal" ]]; then
     succ_str "Set correct ROS ip: $ROS_IP"
   else
-    add_fail; fail_str "Couldn't set correct ROS ip: $ROS_IP"
+    fail_str "Couldn't set correct ROS ip: $ROS_IP"
   fi
 
   ((++tests))
   if [[ "$ROS_HOSTNAME" == "$ros_ip_goal" ]]; then
     succ_str "Set correct Hostname: $ROS_HOSTNAME"
   else
-    add_fail; fail_str "Couldn't set correct Hostname: $ROS_HOSTNAME"
+    fail_str "Couldn't set correct Hostname: $ROS_HOSTNAME"
   fi
 }
 
@@ -192,7 +222,7 @@ test_valid_master() {
     if [[ $? -eq ${results[i]} ]]; then
       succ_str "$(result_to_str ${results[i]}): ${masters[i]}"
     else
-      add_fail; fail_str "$(result_to_str ${results[i]}): ${masters[i]}";
+      fail_str "$(result_to_str ${results[i]}): ${masters[i]}";
     fi
 
     ((++tests))
@@ -293,7 +323,7 @@ test_config_files() {
   for ws in "${test_workspaces[@]}"
   do
     cd $ws
-    ws_checker #&> /dev/null # TODO does PROMPT COMMAND behave differently?
+    ws_checker &> /dev/null
 
     local workspace_file="${config_dir}/${PWD##*/}.ros_ws"
 
@@ -301,7 +331,7 @@ test_config_files() {
     if [[ -f "$workspace_file" ]]; then
       succ_str "Found workspace description file $workspace_file"
     else
-      add_fail; fail_str "Did not find workspace description file $workspace_file"
+      fail_str "Did not find workspace description file $workspace_file"
     fi
 
     ((++tests))
@@ -309,7 +339,7 @@ test_config_files() {
     if [[ -f "$abs_ws_config" ]]; then
       succ_str "Found workspace config file      $abs_ws_config"
     else
-      add_fail; fail_str "Did not find workspace config file $abs_ws_config"
+      fail_str "Did not find workspace config file $abs_ws_config"
     fi
 
     ((++tests))
@@ -317,13 +347,15 @@ test_config_files() {
     if [[ $? -eq 0 ]]; then
       succ_str "workspace properly sourced"
     else
-      add_fail; fail_str "workspace not properly sourced?"
+      fail_str "workspace not properly sourced?"
     fi
   done
 }
 
 init
 
+test_shell
+test_get_ros_version
 test_connect_v
 test_connect
 test_valid_master
